@@ -1,15 +1,37 @@
 const cds = require('@sap/cds')
 const { INSERT, SELECT, UPDATE } = cds.ql
 const { hashPassword, verifyPassword } = require('./lib/password')
-const { validateSpacefarerPayload, validateSpacefarerUpdate } = require('./lib/validators')
+const { validateSpacefarerUpdate } = require('./lib/validators')
+const { validateAndPrepareNewSpacefarer, verifyOnboardingPersisted } = require('./lib/onboarding')
+const { sendWelcomeEmail } = require('./lib/mail')
 
 const SECRET_FIELDS = ['password', 'passwordHash', 'failedLoginAttempts', 'lockedUntil']
+const LOG = cds.log('onboarding')
+const DB_SPACEFARERS = 'galactic.Spacefarers'
 
 function stripSecrets(row) {
   if (!row) return row
   if (Array.isArray(row)) return row.map(stripSecrets)
   for (const f of SECRET_FIELDS) delete row[f]
   return row
+}
+
+function isDuplicateEmailError(err) {
+  const msg = String(err?.message ?? err)
+  return err?.code === 'SQLITE_CONSTRAINT_UNIQUE' || /UNIQUE constraint failed.*email/i.test(msg)
+}
+
+async function readGalacticSpacefarer(where) {
+  return cds.run(SELECT.one.from(DB_SPACEFARERS).where(where))
+}
+
+async function createSpacefarerViaService(srv, Spacefarers, entry, tx) {
+  const createReq = new cds.Request({
+    query: INSERT.into(Spacefarers).entries(entry),
+    tx,
+  })
+  createReq.user = cds.User.privileged
+  return srv.dispatch(createReq)
 }
 
 function rejectSecretSelect(req) {
@@ -36,6 +58,47 @@ module.exports = cds.service.impl(function () {
     else stripSecrets(results)
   })
 
+  this.before('CREATE', Spacefarers, async req => {
+    delete req.data.password
+    const err = await validateAndPrepareNewSpacefarer(req.data, req.tx)
+    if (err) return req.reject(400, err)
+  })
+
+  this.after('CREATE', Spacefarers, async (results, req) => {
+    const row = Array.isArray(results) ? results[0] : results
+    if (!row?.ID) {
+      LOG.warn('Onboarding: missing create result')
+      return
+    }
+
+    const prepared = {
+      stardustCollection: req.data.stardustCollection,
+      navigationSkill_level: req.data.navigationSkill_level,
+    }
+
+    const stored = await readGalacticSpacefarer({ ID: row.ID })
+    if (!stored) {
+      LOG.warn('Onboarding: spacefarer not found after create', { ID: row.ID })
+      return
+    }
+
+    if (!verifyOnboardingPersisted(stored, prepared)) {
+      LOG.warn('Onboarding: persisted values differ from prepared values', {
+        prepared,
+        stored: {
+          stardustCollection: stored.stardustCollection,
+          navigationSkill_level: stored.navigationSkill_level,
+        },
+      })
+    }
+
+    try {
+      await sendWelcomeEmail(stripSecrets({ ...stored }))
+    } catch (err) {
+      LOG.warn('Welcome email failed; create kept', { email: stored.email, error: err.message })
+    }
+  })
+
   this.before('UPDATE', Spacefarers, async req => {
     for (const f of ['passwordHash', 'password', 'failedLoginAttempts', 'lockedUntil', 'email', 'originPlanet', 'originPlanet_code']) {
       delete req.data[f]
@@ -59,42 +122,41 @@ module.exports = cds.service.impl(function () {
     const data = { ...req.data }
     if (!data.password) return req.reject(400, 'Password is required')
 
-    const existing = await cds.run(SELECT.one.from('galactic.Spacefarers').where({ email: data.email }))
+    const existing = await readGalacticSpacefarer({ email: data.email })
     if (existing) return req.reject(409, 'Email is already registered')
 
-    const err = await validateSpacefarerPayload(data, req.tx)
-    if (err) return req.reject(400, err)
-
-    const entry = {
-      ID: cds.utils.uuid(),
-      name: data.name,
-      email: data.email,
-      passwordHash: hashPassword(data.password),
-      stardustCollection: data.stardustCollection ?? 0,
-      originPlanet_code: data.originPlanet_code,
-      navigationSkill_level: data.navigationSkill_level,
-      spacesuitColor_code: data.spacesuitColor_code,
-      department_ID: data.department_ID,
-      position_ID: data.position_ID,
-      failedLoginAttempts: 0,
+    const ID = cds.utils.uuid()
+    try {
+      await createSpacefarerViaService(this, Spacefarers, {
+        ID,
+        name: data.name,
+        email: data.email,
+        passwordHash: hashPassword(data.password),
+        stardustCollection: data.stardustCollection ?? 0,
+        originPlanet_code: data.originPlanet_code,
+        navigationSkill_level: data.navigationSkill_level,
+        spacesuitColor_code: data.spacesuitColor_code,
+        department_ID: data.department_ID,
+        position_ID: data.position_ID,
+      }, req.tx)
+    } catch (err) {
+      if (isDuplicateEmailError(err)) return req.reject(409, 'Email is already registered')
+      throw err
     }
 
-    await cds.run(INSERT.into('galactic.Spacefarers').entries(entry))
-    const created = await req.tx.run(SELECT.one.from(Spacefarers).where({ ID: entry.ID }))
-    return stripSecrets(created ?? entry)
+    const created = await readGalacticSpacefarer({ ID })
+    return stripSecrets(created)
   })
 
   this.on('resetPassword', async req => {
     const { email, originPlanet_code } = req.data
     if (!email || !originPlanet_code) return req.reject(400, 'Email and origin planet are required')
 
-    const row = await cds.run(
-      SELECT.one.from('galactic.Spacefarers').where({ email, originPlanet_code, isDeleted: false })
-    )
+    const row = await readGalacticSpacefarer({ email, originPlanet_code, isDeleted: false })
     if (!row) return req.reject(404, 'Spacefarer not found')
 
     await cds.run(
-      UPDATE('galactic.Spacefarers')
+      UPDATE(DB_SPACEFARERS)
         .set({
           passwordHash: hashPassword(originPlanet_code),
           failedLoginAttempts: 0,
@@ -107,7 +169,9 @@ module.exports = cds.service.impl(function () {
 
   this.on('changeMyPassword', async req => {
     const row = await cds.run(
-      SELECT.one.from('galactic.Spacefarers').where({ email: req.user.id, isDeleted: false })
+      SELECT.one.from(DB_SPACEFARERS)
+        .columns('ID', 'passwordHash')
+        .where({ email: req.user.id, isDeleted: false })
     )
     if (!row) return req.reject(404, 'Spacefarer not found')
 
@@ -116,7 +180,7 @@ module.exports = cds.service.impl(function () {
     if (!verifyPassword(oldPassword, row.passwordHash)) return req.reject(400, 'Current password is incorrect')
 
     await cds.run(
-      UPDATE('galactic.Spacefarers')
+      UPDATE(DB_SPACEFARERS)
         .set({ passwordHash: hashPassword(newPassword), failedLoginAttempts: 0, lockedUntil: null })
         .where({ ID: row.ID })
     )

@@ -6,6 +6,13 @@ require('@cap-js/cds-test/lib/fixtures/mocha.js')
 
 const cds = require('@sap/cds')
 const { GET, POST, PATCH, expect, axios } = cds.test(__dirname + '/../..')
+const { getSentMail, clearSentMail, setMailFailNext } = require('../../srv/lib/mail')
+const {
+  BASE_STARDUST_BONUS,
+  ENG_STARDUST_BONUS,
+  RECRUIT_SKILL_BOOST,
+} = require('../../srv/lib/onboarding')
+const { getStardustMax } = require('../../srv/lib/config')
 
 const SVC = '/galactic'
 const auth = (email, password) => ({ auth: { username: email, password } })
@@ -15,6 +22,11 @@ const UHURA = 'cccccccc-cccc-cccc-cccc-ccccccccccc2'
 const RETIRED = 'cccccccc-cccc-cccc-cccc-ccccccccccc3'
 const WORF = 'dddddddd-dddd-dddd-dddd-ddddddddddd1'
 
+const ENG_DEPT_X = '11111111-1111-1111-1111-111111111101'
+const NAV_DEPT_X = '11111111-1111-1111-1111-111111111102'
+const ENG_PROPULSION = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1'
+const NAV_ROUTE = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3'
+
 const registerPayload = (overrides = {}) => ({
   name: 'Hikaru Sulu',
   email: 'sulu@planet-x.gal',
@@ -23,8 +35,8 @@ const registerPayload = (overrides = {}) => ({
   originPlanet_code: 'X',
   navigationSkill_level: 4,
   spacesuitColor_code: 'GOLD',
-  department_ID: '11111111-1111-1111-1111-111111111102',
-  position_ID: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3',
+  department_ID: NAV_DEPT_X,
+  position_ID: NAV_ROUTE,
   ...overrides,
 })
 
@@ -155,6 +167,8 @@ describe('GalacticService', () => {
     const { status, data } = await POST(`${SVC}/registerSpacefarer`, registerPayload())
     expect(status).to.equal(200)
     expect(data.email).to.equal('sulu@planet-x.gal')
+    expect(data.stardustCollection).to.equal(150)
+    expect(data.navigationSkill_level).to.equal(5)
     expect(data).to.not.have.property('passwordHash')
 
     const login = await GET(`${SVC}/Spacefarers`, auth('sulu@planet-x.gal', 'X'))
@@ -209,7 +223,7 @@ describe('GalacticService', () => {
     try {
       await POST(`${SVC}/registerSpacefarer`, registerPayload({
         email: 'rich@planet-x.gal',
-        stardustCollection: 1_000_000,
+        stardustCollection: getStardustMax() + 1,
       }))
       expect.fail('expected 400')
     } catch (err) {
@@ -286,5 +300,197 @@ describe('GalacticService', () => {
     } catch (err) {
       expect(err.response.status).to.equal(401)
     }
+  })
+})
+
+describe('Spacefarer onboarding', () => {
+  beforeEach(() => {
+    clearSentMail()
+    setMailFailNext(false)
+  })
+
+  it('applies +100 stardust and +1 skill for non-ENG recruits', async () => {
+    const { data } = await POST(`${SVC}/registerSpacefarer`, registerPayload({
+      email: 'nav-bonus@planet-x.gal',
+      stardustCollection: 50,
+      navigationSkill_level: 3,
+    }))
+
+    expect(data.stardustCollection).to.equal(50 + BASE_STARDUST_BONUS)
+    expect(data.navigationSkill_level).to.equal(3 + RECRUIT_SKILL_BOOST)
+
+    const mail = getSentMail()
+    expect(mail).to.have.length(1)
+    expect(mail[0].to).to.equal('nav-bonus@planet-x.gal')
+    expect(mail[0].text).to.include(`stardust collection starts at ${50 + BASE_STARDUST_BONUS}`)
+    expect(mail[0].text).to.include(`navigation skill is level ${3 + RECRUIT_SKILL_BOOST}`)
+  })
+
+  it('applies +300 stardust total for ENG recruits (+100 base +200 ENG)', async () => {
+    const { data } = await POST(`${SVC}/registerSpacefarer`, registerPayload({
+      name: 'Geordi Jr',
+      email: 'eng-bonus@planet-x.gal',
+      stardustCollection: 10,
+      navigationSkill_level: 2,
+      department_ID: ENG_DEPT_X,
+      position_ID: ENG_PROPULSION,
+    }))
+
+    expect(data.stardustCollection).to.equal(10 + ENG_STARDUST_BONUS)
+    expect(data.navigationSkill_level).to.equal(3)
+
+    const login = await GET(`${SVC}/Spacefarers`, auth('eng-bonus@planet-x.gal', 'X'))
+    const stored = login.data.value.find(s => s.email === 'eng-bonus@planet-x.gal')
+    expect(stored.stardustCollection).to.equal(10 + ENG_STARDUST_BONUS)
+    expect(stored.navigationSkill_level).to.equal(3)
+  })
+
+  it('caps enhanced stardust at GALACTIC_STARDUST_MAX', async () => {
+    const max = getStardustMax()
+    const { data } = await POST(`${SVC}/registerSpacefarer`, registerPayload({
+      email: 'cap-stardust@planet-x.gal',
+      stardustCollection: max - BASE_STARDUST_BONUS + 50,
+      navigationSkill_level: 1,
+    }))
+
+    expect(data.stardustCollection).to.equal(max)
+  })
+
+  it('does not boost navigation skill above level 7', async () => {
+    const { data } = await POST(`${SVC}/registerSpacefarer`, registerPayload({
+      email: 'cap-skill@planet-x.gal',
+      navigationSkill_level: 7,
+    }))
+
+    expect(data.navigationSkill_level).to.equal(7)
+  })
+
+  it('rejects invalid email before insert and sends no welcome mail', async () => {
+    try {
+      await POST(`${SVC}/registerSpacefarer`, registerPayload({
+        email: 'not-an-email',
+      }))
+      expect.fail('expected 400')
+    } catch (err) {
+      expect(err.response?.status ?? err.status).to.equal(400)
+    }
+
+    expect(getSentMail()).to.have.length(0)
+  })
+
+  it('keeps registration when welcome email delivery fails', async () => {
+    setMailFailNext(true)
+
+    const { status, data } = await POST(`${SVC}/registerSpacefarer`, registerPayload({
+      email: 'mailfail@planet-x.gal',
+      stardustCollection: 0,
+      navigationSkill_level: 1,
+    }))
+
+    expect(status).to.equal(200)
+    expect(data.stardustCollection).to.equal(BASE_STARDUST_BONUS)
+    expect(getSentMail()).to.have.length(0)
+
+    const login = await GET(`${SVC}/Spacefarers`, auth('mailfail@planet-x.gal', 'X'))
+    expect(login.data.value.some(s => s.email === 'mailfail@planet-x.gal')).to.equal(true)
+  })
+
+  it('rejects initial stardust above maximum before bonus is applied', async () => {
+    try {
+      await POST(`${SVC}/registerSpacefarer`, registerPayload({
+        email: 'too-rich@planet-x.gal',
+        stardustCollection: getStardustMax() + 1,
+      }))
+      expect.fail('expected 400')
+    } catch (err) {
+      expect(err.response?.status ?? err.status).to.equal(400)
+    }
+
+    expect(getSentMail()).to.have.length(0)
+  })
+
+  it('trims bonus when starting stardust is already at cap (no net gain)', async () => {
+    const max = getStardustMax()
+    const { data } = await POST(`${SVC}/registerSpacefarer`, registerPayload({
+      email: 'max-start@planet-x.gal',
+      stardustCollection: max,
+      navigationSkill_level: 1,
+    }))
+
+    expect(data.stardustCollection).to.equal(max)
+  })
+
+  it('sends exactly one welcome email per registration', async () => {
+    await POST(`${SVC}/registerSpacefarer`, registerPayload({
+      email: 'single-mail@planet-x.gal',
+      stardustCollection: 0,
+      navigationSkill_level: 1,
+    }))
+
+    expect(getSentMail()).to.have.length(1)
+  })
+
+  it('rejects duplicate registration with 409 on repeated email', async () => {
+    const payload = registerPayload({ email: 'dupe@planet-x.gal' })
+    await POST(`${SVC}/registerSpacefarer`, payload)
+
+    try {
+      await POST(`${SVC}/registerSpacefarer`, payload)
+      expect.fail('expected 409')
+    } catch (err) {
+      expect(err.response?.status ?? err.status).to.equal(409)
+    }
+
+    expect(getSentMail()).to.have.length(1)
+  })
+
+  it('rejects racing duplicate registrations for the same email', async () => {
+    const payload = registerPayload({ email: 'race@planet-x.gal' })
+    const results = await Promise.allSettled([
+      POST(`${SVC}/registerSpacefarer`, payload),
+      POST(`${SVC}/registerSpacefarer`, payload),
+    ])
+
+    const statuses = results.map(r =>
+      r.status === 'fulfilled' ? r.value.status : (r.reason.response?.status ?? r.reason.status)
+    )
+    expect(statuses.filter(s => s === 200)).to.have.length(1)
+    expect(statuses.filter(s => s === 409 || s === 500)).to.have.length(1)
+    expect(getSentMail()).to.have.length(1)
+  })
+
+  it('respects GALACTIC_BONUS_DEPARTMENT_CODES for department extra bonus', async () => {
+    const prev = process.env.GALACTIC_BONUS_DEPARTMENT_CODES
+    process.env.GALACTIC_BONUS_DEPARTMENT_CODES = 'NAV'
+    try {
+      const { data } = await POST(`${SVC}/registerSpacefarer`, registerPayload({
+        email: 'env-bonus@planet-x.gal',
+        stardustCollection: 10,
+        navigationSkill_level: 2,
+        department_ID: ENG_DEPT_X,
+        position_ID: ENG_PROPULSION,
+      }))
+      expect(data.stardustCollection).to.equal(10 + BASE_STARDUST_BONUS)
+    } finally {
+      if (prev === undefined) delete process.env.GALACTIC_BONUS_DEPARTMENT_CODES
+      else process.env.GALACTIC_BONUS_DEPARTMENT_CODES = prev
+    }
+  })
+
+  it('welcome email uses values re-read from the database after onboarding', async () => {
+    await POST(`${SVC}/registerSpacefarer`, registerPayload({
+      email: 'db-read-mail@planet-x.gal',
+      stardustCollection: 25,
+      navigationSkill_level: 3,
+    }))
+
+    const login = await GET(`${SVC}/Spacefarers`, auth('db-read-mail@planet-x.gal', 'X'))
+    const stored = login.data.value.find(s => s.email === 'db-read-mail@planet-x.gal')
+
+    const mail = getSentMail()
+    expect(mail).to.have.length(1)
+    expect(mail[0].text).to.include(`stardust collection starts at ${stored.stardustCollection}`)
+    expect(mail[0].text).to.include(`navigation skill is level ${stored.navigationSkill_level}`)
+    expect(stored.stardustCollection).to.equal(25 + BASE_STARDUST_BONUS)
   })
 })
