@@ -1,0 +1,6 @@
+ID;name;email;passwordHash;stardustCollection;originPlanet_code;navigationSkill_level;spacesuitColor_code;department_ID;position_ID
+cccccccc-cccc-cccc-cccc-ccccccccccc1;Jean-Luc Picard;picard@planet-x.gal;$2b$10$EvWQ2gzY.vZEKY7UfuDO1OWWZVGv0KhzSwFWRHGm0himH3Hm154k6;120;X;7;SILVER;11111111-1111-1111-1111-111111111101;aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1
+cccccccc-cccc-cccc-cccc-ccccccccccc2;Nyota Uhura;uhura@planet-x.gal;$2b$10$EvWQ2gzY.vZEKY7UfuDO1OWWZVGv0KhzSwFWRHGm0himH3Hm154k6;85;X;6;CRIMSON;11111111-1111-1111-1111-111111111102;aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3
+dddddddd-dddd-dddd-dddd-ddddddddddd1;Worf;worf@planet-y.gal;$2b$10$JPs4pn//uQ911oRvJxwJ0.NMqm.21uFgSfjzkWlz4jqnQdFS02MOG;200;Y;5;AZURE;22222222-2222-2222-2222-222222222202;bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2
+dddddddd-dddd-dddd-dddd-ddddddddddd2;Geordi La Forge;laforge@planet-y.gal;$2b$10$JPs4pn//uQ911oRvJxwJ0.NMqm.21uFgSfjzkWlz4jqnQdFS02MOG;45;Y;6;GOLD;22222222-2222-2222-2222-222222222203;bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb3
+dddddddd-dddd-dddd-dddd-ddddddddddd3;Data;data@planet-y.gal;$2b$10$JPs4pn//uQ911oRvJxwJ0.NMqm.21uFgSfjzkWlz4jqnQdFS02MOG;160;Y;7;VIOLET;22222222-2222-2222-2222-222222222201;bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1

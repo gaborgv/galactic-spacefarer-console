@@ -1,0 +1,51 @@
+{
+  "name": "galactic-console",
+  "version": "1.0.0",
+  "description": "Galactic Spacefarer Adventure Management Console",
+  "private": true,
+  "dependencies": {
+    "@cap-js/sqlite": "^2",
+    "@sap/cds": "^9",
+    "bcrypt": "^6.0.0"
+  },
+  "devDependencies": {
+    "@cap-js/cds-test": "^1",
+    "@sap/cds-dk": "^9",
+    "mocha": "^11"
+  },
+  "scripts": {
+    "start": "cds-serve",
+    "watch": "cds watch",
+    "deploy": "cds deploy --to sqlite",
+    "deploy:fresh": "rm -f db.sqlite test.sqlite && cds deploy --to sqlite",
+    "test": "CDS_ENV=test mocha test/integration/**/*.test.js --timeout 30000"
+  },
+  "cds": {
+    "requires": {
+      "db": {
+        "kind": "sqlite",
+        "credentials": {
+          "url": "db.sqlite"
+        },
+        "data": [
+          "db/seed"
+        ]
+      }
+    },
+    "[test]": {
+      "requires": {
+        "db": {
+          "credentials": {
+            "url": "test.sqlite"
+          },
+          "data": [
+            "test/data"
+          ]
+        }
+      }
+    }
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
