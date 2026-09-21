@@ -22,6 +22,9 @@
   },
   "cds": {
     "requires": {
+      "auth": {
+        "impl": "srv/galactic-auth.js"
+      },
       "db": {
         "kind": "sqlite",
         "credentials": {
