@@ -88,9 +88,11 @@ entity Spacefarers : managed, softDelete {
   key ID           : UUID;
       name         : String(100) not null;
       email        : String(255) not null;
-      passwordHash : String(100)  not null;
+      passwordHash        : String(100)  not null;
+      failedLoginAttempts : Integer default 0 @assert.range: [0, 999];
+      lockedUntil           : Timestamp;
 
-      stardustCollection : Integer default 0 @assert.range: [0, 9999];
+      stardustCollection : Integer default 0 @assert.range: [0, 999999];
 
       originPlanet    : Association to Planets not null;
       navigationSkill : Association to NavigationSkillLevels not null;

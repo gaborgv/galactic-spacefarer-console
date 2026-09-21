@@ -18,8 +18,8 @@ describe('galactic schema', () => {
   })
 
   it('loads rigged fixtures from test/data', async () => {
-    expect(await SELECT.from('galactic.Spacefarers')).to.have.length(5)
-    expect(await SELECT.from('galactic.Departments')).to.have.length(5)
+    expect(await SELECT.from('galactic.Spacefarers')).to.have.length(6)
+    expect(await SELECT.from('galactic.Departments')).to.have.length(6)
   })
 
   it('allows same department code on different planets', async () => {
