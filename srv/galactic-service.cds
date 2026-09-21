@@ -29,7 +29,7 @@ service GalacticService {
     { grant: 'READ',   to: 'authenticated-user', where: 'originPlanet.code = $user.planet' },
     { grant: 'UPDATE', to: 'authenticated-user', where: 'email = $user.id' }
   ])
-  entity Spacefarers as projection on db.Spacefarers excluding { passwordHash, failedLoginAttempts }
+  entity Spacefarers as projection on db.Spacefarers
     where isDeleted = false;
 
   @(requires: 'authenticated-user')

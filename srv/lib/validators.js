@@ -1,14 +1,25 @@
 const cds = require('@sap/cds')
 const { SELECT } = cds.ql
+const { getStardustMax } = require('./config')
 
-const STARDUST_MAX = 999_999
+function assertEmail(email) {
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return 'A valid email address is required'
+  }
+}
 
-async function assertDepartmentOnPlanet(department_ID, planet_code, tx) {
+async function fetchDepartmentOnPlanet(department_ID, planet_code, tx) {
   const department = await tx.run(
     SELECT.one.from('GalacticService.Departments').where({ ID: department_ID, isDeleted: false })
   )
-  if (!department) return 'Invalid department'
-  if (department.planet_code !== planet_code) return 'Department does not belong to origin planet'
+  if (!department) return { error: 'Invalid department' }
+  if (department.planet_code !== planet_code) return { error: 'Department does not belong to origin planet' }
+  return { department }
+}
+
+async function assertDepartmentOnPlanet(department_ID, planet_code, tx) {
+  const result = await fetchDepartmentOnPlanet(department_ID, planet_code, tx)
+  return result.error
 }
 
 async function assertPositionInDepartment(position_ID, department_ID, tx) {
@@ -37,10 +48,14 @@ async function assertSpacesuitColor(code, tx) {
 
 function assertStardust(value) {
   if (value == null) return
-  if (value < 0 || value > STARDUST_MAX) return `Stardust collection must be between 0 and ${STARDUST_MAX}`
+  const max = getStardustMax()
+  if (value < 0 || value > max) return `Stardust collection must be between 0 and ${max}`
 }
 
-async function validateSpacefarerPayload(data, tx) {
+async function validateNewSpacefarerData(data, tx) {
+  const emailErr = assertEmail(data.email)
+  if (emailErr) return { error: emailErr }
+
   const planet = data.originPlanet_code ?? data.originPlanet?.code
   const department_ID = data.department_ID ?? data.department?.ID
   const position_ID = data.position_ID ?? data.position?.ID
@@ -48,17 +63,30 @@ async function validateSpacefarerPayload(data, tx) {
   const spacesuitColor_code = data.spacesuitColor_code ?? data.spacesuitColor?.code
 
   if (!planet || !department_ID || !position_ID) {
-    return 'originPlanet, department and position are required'
+    return { error: 'originPlanet, department and position are required' }
   }
 
+  const deptResult = await fetchDepartmentOnPlanet(department_ID, planet, tx)
+  if (deptResult.error) return { error: deptResult.error }
+
   const checks = [
-    assertDepartmentOnPlanet(department_ID, planet, tx),
     assertPositionInDepartment(position_ID, department_ID, tx),
     assertNavigationSkill(navigationSkill_level, tx),
     assertSpacesuitColor(spacesuitColor_code, tx),
   ]
   const results = await Promise.all(checks)
-  return results.find(Boolean) ?? assertStardust(data.stardustCollection)
+  const fieldErr = results.find(Boolean)
+  if (fieldErr) return { error: fieldErr }
+
+  const stardustErr = assertStardust(data.stardustCollection)
+  if (stardustErr) return { error: stardustErr }
+
+  return { departmentCode: deptResult.department.code }
+}
+
+async function validateSpacefarerPayload(data, tx) {
+  const { error } = await validateNewSpacefarerData(data, tx)
+  return error
 }
 
 function extractKeys(req) {
@@ -104,11 +132,31 @@ async function mergeWithCurrentSpacefarer(req, tx) {
 async function validateSpacefarerUpdate(req, tx) {
   const merged = await mergeWithCurrentSpacefarer(req, tx)
   if (!merged) return 'Spacefarer not found'
-  return validateSpacefarerPayload(merged, tx)
+
+  const planet = merged.originPlanet_code ?? merged.originPlanet?.code
+  const department_ID = merged.department_ID ?? merged.department?.ID
+  const position_ID = merged.position_ID ?? merged.position?.ID
+  const navigationSkill_level = merged.navigationSkill_level ?? merged.navigationSkill?.level
+  const spacesuitColor_code = merged.spacesuitColor_code ?? merged.spacesuitColor?.code
+
+  if (!planet || !department_ID || !position_ID) {
+    return 'originPlanet, department and position are required'
+  }
+
+  const checks = [
+    assertDepartmentOnPlanet(department_ID, planet, tx),
+    assertPositionInDepartment(position_ID, department_ID, tx),
+    assertNavigationSkill(navigationSkill_level, tx),
+    assertSpacesuitColor(spacesuitColor_code, tx),
+  ]
+  const results = await Promise.all(checks)
+  return results.find(Boolean) ?? assertStardust(merged.stardustCollection)
 }
 
 module.exports = {
-  STARDUST_MAX,
+  getStardustMax,
+  assertEmail,
+  validateNewSpacefarerData,
   validateSpacefarerPayload,
   validateSpacefarerUpdate,
   assertDepartmentOnPlanet,

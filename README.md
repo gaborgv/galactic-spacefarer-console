@@ -71,7 +71,7 @@ npm test
 | `Planets`, `Departments`, `Positions`, … | none | Active code lists for registration (`isDeleted = false`) |
 | `Spacefarers` | Basic | Active spacefarers on your planet |
 | `SpacefarersAll` | Basic | All spacefarers on your planet (includes soft-deleted) |
-| `POST registerSpacefarer` | none | Create account |
+| `POST registerSpacefarer` | none | Create account (applies onboarding bonuses, sends welcome email to log) |
 | `POST changeMyPassword` | Basic | Change password only |
 | `POST resetPassword` | none | Demo reset to origin planet code |
 | `PATCH Spacefarers({id})` with `{ isDeleted: true }` | Basic | Soft-delete own profile (no DELETE) |
@@ -84,6 +84,21 @@ Optional env vars:
 | `GALACTIC_LOCKOUT_DURATION_MINUTES` | `15` | Lockout duration |
 | `GALACTIC_RATE_LIMIT_MAX` | `60` | Requests per window per IP (register/reset/auth) |
 | `GALACTIC_RATE_LIMIT_WINDOW_MS` | `60000` | Rate-limit window |
+| `GALACTIC_STARDUST_MAX` | `999999` | Maximum stardust collection (validation and post-bonus cap) |
+| `GALACTIC_BONUS_DEPARTMENT_CODES` | `ENG` | Comma-separated department codes that receive the extra +200 stardust signup bonus |
+
+## Onboarding bonuses
+
+When a spacefarer is created (`registerSpacefarer` or direct `CREATE` on `Spacefarers`), event handlers apply:
+
+| Bonus | Rule |
+| ----- | ---- |
+| Stardust | +100 for all; +200 additional for configured department codes (default: `ENG`) |
+| Stardust cap | `GALACTIC_STARDUST_MAX` (default 999,999; bonus may be trimmed to fit) |
+| Navigation skill | +1 for all, capped at level 7 |
+| Welcome email | Log-only mock (`cds.log('mail')` + in-memory queue for tests) |
+
+Mail delivery failures do not roll back registration.
 
 ## Demo logins
 
