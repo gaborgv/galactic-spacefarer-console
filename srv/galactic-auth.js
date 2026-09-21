@@ -1,37 +1,65 @@
-const cds = require("@sap/cds");
-const { SELECT } = cds.ql;
-const { verifyPassword } = require("./lib/password");
+const cds = require('@sap/cds')
+const { SELECT } = cds.ql
+const { verifyPassword } = require('./lib/password')
+const { isLocked, recordFailedLogin, resetLoginAttempts, maxAttempts } = require('./lib/lockout')
+const { check, clientKey } = require('./lib/throttle')
 
 module.exports = async function galacticAuth(req, res, next) {
-  req._login = () =>
-    res
-      .set("WWW-Authenticate", 'Basic realm="Galactic Spacefarers"')
-      .sendStatus(401);
+  req._login = (status = 401, message) => {
+    if (message) res.status(status).json({ error: { code: String(status), message } })
+    else res.set('WWW-Authenticate', 'Basic realm="Galactic Spacefarers"').sendStatus(status)
+  }
 
-  const auth = req.headers.authorization;
-  if (!auth?.match(/^basic /i)) return next();
+  const auth = req.headers.authorization
+  if (!auth?.match(/^basic /i)) {
+    const path = `${req.baseUrl ?? ''}${req.path ?? ''}`
+    const isPublicRead = req.method === 'GET' &&
+      /\/(Planets|Departments|Positions|NavigationSkillLevels|SpacesuitColors)(\/|$|\?)/.test(path)
+    const isPublicAction = req.method === 'POST' &&
+      /\/(registerSpacefarer|resetPassword)(\/|$|\?)/.test(path)
+    if (isPublicRead || isPublicAction) {
+      const anonymous = new cds.User({ id: 'anonymous', roles: ['any'] })
+      if (cds.context) cds.context.user = anonymous
+      req.user = anonymous
+    }
+    return next()
+  }
 
-  const creds = Buffer.from(auth.slice(6), "base64").toString();
-  const sep = creds.indexOf(":");
-  if (sep < 0) return req._login();
+  const throttle = check(`auth:${clientKey(req)}`)
+  if (throttle.limited) {
+    res.set('Retry-After', String(throttle.retryAfter))
+    return req._login(429, 'Too many authentication attempts. Try again later.')
+  }
 
-  const email = creds.slice(0, sep);
-  const password = creds.slice(sep + 1);
-  if (!email || !password) return req._login();
+  const creds = Buffer.from(auth.slice(6), 'base64').toString()
+  const sep = creds.indexOf(':')
+  if (sep < 0) return req._login()
 
-  const spacefarer = await SELECT.one
-    .from("galactic.Spacefarers")
-    .where({ email, isDeleted: false });
-  if (!spacefarer || !verifyPassword(password, spacefarer.passwordHash))
-    return req._login();
+  const email = creds.slice(0, sep)
+  const password = creds.slice(sep + 1)
+  if (!email || !password) return req._login()
+
+  const spacefarer = await SELECT.one.from('galactic.Spacefarers').where({ email, isDeleted: false })
+  if (!spacefarer) return req._login()
+
+  if (isLocked(spacefarer)) {
+    return req._login(423, `Account locked after ${maxAttempts()} failed attempts. Try again later.`)
+  }
+
+  if (!verifyPassword(password, spacefarer.passwordHash)) {
+    await recordFailedLogin(spacefarer)
+    return req._login()
+  }
+
+  await resetLoginAttempts(spacefarer)
 
   const user = new cds.User({
     id: email,
-    roles: ["authenticated-user", "spacefarer"],
+    roles: ['authenticated-user', 'spacefarer'],
     attr: { planet: spacefarer.originPlanet_code, email },
-  });
+  })
 
-  if (cds.context) cds.context.user = user;
-  req.user = user;
-  next();
-};
+  if (cds.context) cds.context.user = user
+  req.user = user
+  next()
+}

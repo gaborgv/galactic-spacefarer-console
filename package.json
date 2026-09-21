@@ -17,7 +17,9 @@
     "start": "cds-serve",
     "watch": "cds watch",
     "deploy": "cds deploy --to sqlite",
-    "deploy:fresh": "rm -f db.sqlite test.sqlite && cds deploy --to sqlite",
+    "deploy:fresh": "rm -f db.sqlite db.sqlite-wal db.sqlite-shm test.sqlite test.sqlite-wal test.sqlite-shm && cds deploy --to sqlite",
+    "dev:stop": "lsof -ti :4004 | xargs kill 2>/dev/null || true",
+    "dev:reset": "npm run dev:stop && npm run deploy:fresh && npm run watch",
     "test": "CDS_ENV=test mocha test/integration/**/*.test.js --timeout 30000"
   },
   "cds": {
