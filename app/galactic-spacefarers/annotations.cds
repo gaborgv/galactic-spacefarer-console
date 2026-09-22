@@ -92,11 +92,10 @@ annotate service.Spacefarers with {
   navigationSkill_level  @UI.HiddenFilter;
   department_ID          @UI.HiddenFilter;
   position_ID            @UI.HiddenFilter;
-  spacesuitColor_code    @UI.HiddenFilter;
 };
 
 annotate service.Spacefarers with {
-  spacesuitColor_code @(
+  spacesuitColor @(
     title: '{i18n>SpacesuitColor}',
     Common: {
       Text: spacesuitColorName,
@@ -104,6 +103,7 @@ annotate service.Spacefarers with {
       ValueListWithFixedValues: true,
       ValueList: {
         CollectionPath: 'SpacesuitColorOptions',
+        Label: '{i18n>SpacesuitColor}',
         Parameters: [
           {
             $Type: 'Common.ValueListParameterInOut',
@@ -130,7 +130,18 @@ annotate service.Spacefarers with {
 annotate service.SpacesuitColorOptions with @(
   title: '{i18n>SpacesuitColor}',
   UI.Identification: [{Value: name}],
+  UI.LineItem: [{Value: name, Label: '{i18n>SpacesuitColor}'}],
 );
+
+annotate service.SpacesuitColorOptions with {
+  code @(
+    title: '{i18n>SpacesuitColor}',
+    Common.Text: name,
+    Common.TextArrangement: #TextOnly
+  );
+  name @title: '{i18n>SpacesuitColor}';
+  locale @UI.Hidden;
+};
 
 annotate service.NavigationSkillChoices with @(
   title: '{i18n>NavigationSkill}',

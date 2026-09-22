@@ -8,9 +8,22 @@ sap.ui.define([
 
   const SERVICE = '/galactic'
 
+  function currentLocale() {
+    const raw = sap.ui.getCore().getConfiguration().getLanguage() || 'en'
+    return String(raw).split(/[-_]/)[0].toLowerCase() || 'en'
+  }
+
+  function localized(row, field, fallback) {
+    const locale = currentLocale()
+    const texts = row.texts ?? []
+    const hit = texts.find(t => t.locale === locale) || texts.find(t => t.locale === 'en')
+    return hit?.[field] || fallback
+  }
+
   return Controller.extend('galactic.spacefarers.controller.Register', {
     onInit() {
       this._model = new JSONModel({
+        busy: true,
         name: '',
         email: '',
         password: '',
@@ -40,17 +53,29 @@ sap.ui.define([
     },
 
     async _loadPublicData() {
+      this._model.setProperty('/busy', true)
       try {
         const [planets, skills, colors] = await Promise.all([
           this._fetchJson('/Planets'),
-          this._fetchJson('/NavigationSkillChoices'),
-          this._fetchJson('/SpacesuitColorOptions'),
+          this._fetchJson('/NavigationSkillLevels?$expand=texts&$orderby=level'),
+          this._fetchJson('/SpacesuitColors?$expand=texts&$orderby=code'),
         ])
-        this._model.setProperty('/planets', planets)
-        this._model.setProperty('/skills', skills)
-        this._model.setProperty('/colors', colors)
+        this._model.setProperty('/planets', planets.map(p => ({
+          code: p.code,
+          name: p.name || p.code,
+        })))
+        this._model.setProperty('/skills', skills.map(s => ({
+          level: String(s.level),
+          name: localized(s, 'label', `Level ${s.level}`),
+        })))
+        this._model.setProperty('/colors', colors.map(c => ({
+          code: c.code,
+          name: localized(c, 'name', c.code),
+        })))
       } catch (err) {
         MessageBox.error(err.message ?? 'Could not load registration data')
+      } finally {
+        this._model.setProperty('/busy', false)
       }
     },
 
@@ -67,9 +92,12 @@ sap.ui.define([
 
       try {
         const departments = await this._fetchJson(
-          `/Departments?$filter=planet_code eq '${planet}'`
+          `/Departments?$filter=${encodeURIComponent(`planet_code eq '${String(planet).replace(/'/g, "''")}'`)}&$expand=texts&$orderby=code`
         )
-        this._model.setProperty('/departments', departments)
+        this._model.setProperty('/departments', departments.map(d => ({
+          ID: d.ID,
+          name: localized(d, 'name', d.code),
+        })))
       } catch (err) {
         MessageBox.error(err.message ?? 'Could not load departments')
       }
@@ -86,9 +114,12 @@ sap.ui.define([
 
       try {
         const positions = await this._fetchJson(
-          `/Positions?$filter=department_ID eq '${departmentId}'`
+          `/Positions?$filter=${encodeURIComponent(`department_ID eq ${departmentId}`)}&$expand=texts&$orderby=code`
         )
-        this._model.setProperty('/positions', positions)
+        this._model.setProperty('/positions', positions.map(p => ({
+          ID: p.ID,
+          name: localized(p, 'title', p.code),
+        })))
       } catch (err) {
         MessageBox.error(err.message ?? 'Could not load positions')
       }

@@ -35,6 +35,20 @@ sap.ui.define([
       onExit() {
         clearInterval(this._hideTimer)
       },
+
+      routing: {
+        onAfterBinding() {
+          if (!this._initialListBound) {
+            this._initialListBound = true
+            return
+          }
+          try {
+            this.base.getExtensionAPI()?.refresh?.()
+          } catch {
+            this.base.getView()?.getModel?.()?.refresh?.()
+          }
+        },
+      },
     },
 
     async _fetchSession() {

@@ -11,27 +11,43 @@
         height: 100%;
         margin: 0;
       }
+
+      .registerFormHost {
+        width: 50% !important;
+        max-width: 50vw;
+        box-sizing: border-box;
+      }
     </style>
     <script
       id="sap-ui-bootstrap"
       src="https://ui5.sap.com/1.120.35/resources/sap-ui-core.js"
       data-sap-ui-theme="sap_horizon"
-      data-sap-ui-libs="sap.m,sap.ui.layout"
+      data-sap-ui-libs="sap.m,sap.ui.layout,sap.ui.core"
       data-sap-ui-resourceroots='{"galactic.spacefarers": "/galactic-spacefarers/webapp/"}'
       data-sap-ui-oninit="bootRegisterPage"
       data-sap-ui-flexibilityServices='""'
       data-sap-ui-compatVersion="edge"
       data-sap-ui-async="true"
+      data-sap-ui-xx-waitForTheme="true"
     ></script>
     <script>
       function bootRegisterPage() {
-        sap.ui.require(['sap/ui/core/mvc/XMLView'], function (XMLView) {
-          XMLView.create({
-            viewName: 'galactic.spacefarers.view.Register',
-          }).then(function (view) {
-            view.placeAt('content')
-          })
-        })
+        sap.ui.require(
+          ['sap/ui/core/mvc/XMLView', 'sap/ui/layout/form/SimpleForm', 'sap/ui/layout/form/ColumnLayout'],
+          function (XMLView) {
+            XMLView.create({
+              viewName: 'galactic.spacefarers.view.Register',
+              height: '100%',
+            })
+              .then(function (view) {
+                view.placeAt('content')
+              })
+              .catch(function (err) {
+                console.error('Failed to start registration page:', err)
+                document.body.textContent = 'Could not load the registration form.'
+              })
+          }
+        )
       }
     </script>
   </head>

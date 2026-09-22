@@ -3,69 +3,101 @@
   xmlns="sap.m"
   xmlns:mvc="sap.ui.core.mvc"
   xmlns:f="sap.ui.layout.form"
-  xmlns:core="sap.ui.core">
-  <Page title="Join the Galactic Adventure" showNavButton="false">
-    <customHeader>
-      <Bar>
-        <contentMiddle>
-          <Title text="Join the Galactic Adventure" />
-        </contentMiddle>
-        <contentRight>
-          <Button text="Sign In" type="Transparent" press=".onSignInPress" />
-        </contentRight>
-      </Bar>
-    </customHeader>
-    <content>
-      <VBox class="sapUiSmallMargin">
-        <Text text="Register as a new spacefarer. No login required." class="sapUiTinyMarginBottom" />
-        <f:SimpleForm editable="true" layout="ResponsiveGridLayout" width="100%">
-          <Label text="Name" required="true" />
-          <Input value="{register>/name}" />
+  xmlns:core="sap.ui.core"
+  displayBlock="true"
+  height="100%">
+  <App id="registerApp" busy="{register>/busy}" busyIndicatorDelay="0">
+    <Page id="registerPage" enableScrolling="true" showNavButton="false">
+      <customHeader>
+        <Bar>
+          <contentMiddle>
+            <Title text="Join the Galactic Adventure" />
+          </contentMiddle>
+          <contentRight>
+            <Button text="Sign In" type="Transparent" press=".onSignInPress" />
+          </contentRight>
+        </Bar>
+      </customHeader>
+      <content>
+        <HBox width="100%" justifyContent="Center" class="sapUiSmallMarginTop">
+          <VBox class="registerFormHost" width="50%">
+          <Text text="Register as a new spacefarer. No login required." class="sapUiTinyMarginBottom" />
+          <f:SimpleForm
+            editable="true"
+            layout="ColumnLayout"
+            columnsM="1"
+            columnsL="1"
+            columnsXL="1"
+            width="100%">
+            <Label text="Name" required="true" />
+            <Input id="name" value="{register>/name}" />
 
-          <Label text="Email" required="true" />
-          <Input value="{register>/email}" type="Email" />
+            <Label text="Email" required="true" />
+            <Input id="email" value="{register>/email}" type="Email" />
 
-          <Label text="Password" required="true" />
-          <Input value="{register>/password}" type="Password" description="Demo: use your planet code (X or Y)" />
+            <Label text="Password" required="true" />
+            <Input id="password" value="{register>/password}" type="Password" />
 
-          <Label text="Origin Planet" required="true" />
-          <Select
-            selectedKey="{register>/originPlanet_code}"
-            items="{register>/planets}"
-            change=".onPlanetChange">
-            <core:Item key="{register>code}" text="{register>name}" />
-          </Select>
+            <Label text="Origin Planet" required="true" />
+            <Select
+              id="planet"
+              forceSelection="false"
+              width="100%"
+              selectedKey="{register>/originPlanet_code}"
+              items="{register>/planets}"
+              change=".onPlanetChange">
+              <core:Item key="{register>code}" text="{register>name}" />
+            </Select>
 
-          <Label text="Department" required="true" />
-          <Select
-            selectedKey="{register>/department_ID}"
-            items="{register>/departments}"
-            change=".onDepartmentChange">
-            <core:Item key="{register>ID}" text="{register>code}" />
-          </Select>
+            <Label text="Department" required="true" />
+            <Select
+              id="department"
+              forceSelection="false"
+              width="100%"
+              enabled="{= !!${register>/originPlanet_code} }"
+              selectedKey="{register>/department_ID}"
+              items="{register>/departments}"
+              change=".onDepartmentChange">
+              <core:Item key="{register>ID}" text="{register>name}" />
+            </Select>
 
-          <Label text="Position" required="true" />
-          <Select selectedKey="{register>/position_ID}" items="{register>/positions}">
-            <core:Item key="{register>ID}" text="{register>code}" />
-          </Select>
+            <Label text="Position" required="true" />
+            <Select
+              id="position"
+              forceSelection="false"
+              width="100%"
+              enabled="{= !!${register>/department_ID} }"
+              selectedKey="{register>/position_ID}"
+              items="{register>/positions}">
+              <core:Item key="{register>ID}" text="{register>name}" />
+            </Select>
 
-          <Label text="Navigation Skill" required="true" />
-          <Select selectedKey="{register>/navigationSkill_level}" items="{register>/skills}">
-            <core:Item key="{register>level}" text="{register>name}" />
-          </Select>
+            <Label text="Navigation Skill" required="true" />
+            <Select
+              id="skill"
+              forceSelection="false"
+              width="100%"
+              selectedKey="{register>/navigationSkill_level}"
+              items="{register>/skills}">
+              <core:Item key="{register>level}" text="{register>name}" />
+            </Select>
 
-          <Label text="Spacesuit Color" required="true" />
-          <Select selectedKey="{register>/spacesuitColor_code}" items="{register>/colors}">
-            <core:Item key="{register>code}" text="{register>name}" />
-          </Select>
-
-          <Label text="Stardust Collection" />
-          <Input value="{register>/stardustCollection}" type="Number" />
-        </f:SimpleForm>
-        <HBox class="sapUiSmallMarginTop">
-          <Button text="Register" type="Emphasized" press=".onRegisterPress" />
+            <Label text="Spacesuit Color" required="true" />
+            <Select
+              id="color"
+              forceSelection="false"
+              width="100%"
+              selectedKey="{register>/spacesuitColor_code}"
+              items="{register>/colors}">
+              <core:Item key="{register>code}" text="{register>name}" />
+            </Select>
+          </f:SimpleForm>
+          <HBox class="sapUiSmallMarginTop">
+            <Button id="register" text="Register" type="Emphasized" press=".onRegisterPress" />
+          </HBox>
+        </VBox>
         </HBox>
-      </VBox>
-    </content>
-  </Page>
+      </content>
+    </Page>
+  </App>
 </mvc:View>

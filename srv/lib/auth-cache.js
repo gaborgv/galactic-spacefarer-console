@@ -29,4 +29,11 @@ function remove(authHeader) {
   if (authHeader) cache.delete(authHeader)
 }
 
-module.exports = { get, set, clear, remove, ttlMs }
+function removeByUserId(userId) {
+  if (!userId) return
+  for (const [header, entry] of cache.entries()) {
+    if (entry?.user?.id === userId) cache.delete(header)
+  }
+}
+
+module.exports = { get, set, clear, remove, removeByUserId, ttlMs }

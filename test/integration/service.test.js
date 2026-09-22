@@ -301,6 +301,27 @@ describe('GalacticService', () => {
     expect(after.data.stardustCollection).to.equal(before.data.stardustCollection)
   })
 
+  it('rejects the previous password after changeMyPassword', async () => {
+    await GET(`${SVC}/Spacefarers`, auth('picard@planet-x.gal', 'X'))
+    await POST(`${SVC}/changeMyPassword`, {
+      oldPassword: 'X',
+      newPassword: 'Nova1',
+    }, auth('picard@planet-x.gal', 'X'))
+
+    try {
+      await GET(`${SVC}/Spacefarers`, auth('picard@planet-x.gal', 'X'))
+      expect.fail('expected 401 for previous password')
+    } catch (err) {
+      expect(err.response.status).to.equal(401)
+    }
+
+    await GET(`${SVC}/Spacefarers`, auth('picard@planet-x.gal', 'Nova1'))
+    await POST(`${SVC}/changeMyPassword`, {
+      oldPassword: 'Nova1',
+      newPassword: 'X',
+    }, auth('picard@planet-x.gal', 'Nova1'))
+  })
+
   it('resets password to planet code via resetPassword action', async () => {
     const email = 'reset@planet-x.gal'
     await POST(`${SVC}/registerSpacefarer`, registerPayload({ name: 'Reset Target', email }))
