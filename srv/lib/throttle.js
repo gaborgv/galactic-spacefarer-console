@@ -55,4 +55,10 @@ function reset(key) {
   buckets.delete(key)
 }
 
-module.exports = { check, middleware, clientKey, windowMs, maxRequests, maxAuthFailures, reset }
+function resetByPrefix(prefix) {
+  for (const key of [...buckets.keys()]) {
+    if (key.startsWith(prefix)) buckets.delete(key)
+  }
+}
+
+module.exports = { check, middleware, clientKey, windowMs, maxRequests, maxAuthFailures, reset, resetByPrefix }
