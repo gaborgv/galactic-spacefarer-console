@@ -55,6 +55,12 @@ service GalacticService {
     planet : String;
   };
 
+  /** Clears server-side auth cache for the current session (used after soft-delete). */
+  @(requires: 'authenticated-user')
+  function logout() returns {
+    success : Boolean;
+  };
+
   @cds.redirection.target
   @(requires: 'authenticated-user')
   @(restrict: [

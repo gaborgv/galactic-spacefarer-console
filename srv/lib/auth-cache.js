@@ -25,4 +25,8 @@ function clear() {
   cache.clear()
 }
 
-module.exports = { get, set, clear, ttlMs }
+function remove(authHeader) {
+  if (authHeader) cache.delete(authHeader)
+}
+
+module.exports = { get, set, clear, remove, ttlMs }

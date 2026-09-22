@@ -55,9 +55,23 @@ Sign in with HTTP Basic auth when prompted (email + password = origin planet cod
 
 Planet X users see Planet X spacefarers only; Planet Y users see Planet Y spacefarers only.
 
-The list shows **name**, **email**, **stardust collection**, and **spacesuit color** (localized name, not hex). Sort, filter, and pagination are provided by Fiori Elements.
+The list shows **name**, **stardust collection**, and **spacesuit color** (localized name, not hex). Sort, filter, and pagination are provided by Fiori Elements.
 
-Safari (and other browsers) only show the Basic Auth dialog when the app requests protected OData data (`/galactic/Spacefarers`). `$metadata` is public, so if the UI fails to start you may see no auth prompt at all.
+### Registration (no login)
+
+Open the registration page directly:
+
+```
+http://localhost:4004/galactic-spacefarers/webapp/register.html
+```
+
+Unauthenticated visits to the list redirect here automatically. Registration is a separate page so it does not interfere with Fiori Elements routing. Complete the form and sign in afterward with your email and password.
+
+### Object Page
+
+Click a spacefarer row to open the Object Page. You can view any spacefarer on your planet read-only. On your own profile, use **Edit Profile**, **Change Password**, and **Delete Spacefarer Profile** (soft-delete).
+
+**Edit Profile** switches the Object Page into edit mode. Only stardust collection and spacesuit color are editable; Save / Cancel are the standard Fiori footer actions.
 
 If the page stays blank, hard-refresh and check the browser console. Demo credentials: `picard@planet-x.gal` / `X`.
 
@@ -103,6 +117,7 @@ npm test
 | `Spacefarers` | Basic | Active spacefarers on your planet |
 | `SpacefarersAll` | Basic | All spacefarers on your planet (includes soft-deleted) |
 | `POST registerSpacefarer` | none | Create account (applies onboarding bonuses, sends welcome email to log) |
+| `GET whoAmI()` | Basic | Current session email and planet (UI edit gating) |
 | `POST changeMyPassword` | Basic | Change password only |
 | `POST resetPassword` | none | Demo reset to origin planet code |
 | `PATCH Spacefarers({id})` with `{ isDeleted: true }` | Basic | Soft-delete own profile (no DELETE) |

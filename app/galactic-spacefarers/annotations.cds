@@ -5,6 +5,7 @@ annotate service.Spacefarers with @(
   cds.search: name,
   Capabilities.DeleteRestrictions: { Deletable: false },
   UI: {
+    DeleteHidden: true,
     CommunicationHidden: true,
     SelectionFields: [stardustCollection, spacesuitColor_code],
     LineItem: [
@@ -20,7 +21,7 @@ annotate service.Spacefarers with @(
     },
     Identification: [
       {Value: stardustCollection, Label: '{i18n>StardustCollection}'},
-      {Value: spacesuitColorName, Label: '{i18n>SpacesuitColor}'},
+      {Value: spacesuitColor_code, Label: '{i18n>SpacesuitColor}'},
       {Value: navigationSkillLabel, Label: '{i18n>NavigationSkill}'},
     ],
     Facets: [
@@ -41,7 +42,7 @@ annotate service.Spacefarers with @(
         {Value: email, Label: '{i18n>Email}'},
         {Value: originPlanetName, Label: '{i18n>OriginPlanet}'},
         {Value: stardustCollection, Label: '{i18n>StardustCollection}'},
-        {Value: spacesuitColorName, Label: '{i18n>SpacesuitColor}'},
+        {Value: spacesuitColor_code, Label: '{i18n>SpacesuitColor}'},
         {Value: navigationSkillLabel, Label: '{i18n>NavigationSkill}'},
       ],
     },
@@ -83,9 +84,31 @@ annotate service.Spacefarers with {
 };
 
 annotate service.Spacefarers with {
+  name                   @Common.FieldControl: #ReadOnly;
+  email                  @Common.FieldControl: #ReadOnly;
+  originPlanetName       @Common.FieldControl: #ReadOnly;
+  originPlanet_code      @Common.FieldControl: #ReadOnly;
+  navigationSkillLabel   @Common.FieldControl: #ReadOnly;
+  navigationSkill_level  @Common.FieldControl: #ReadOnly;
+  departmentName         @Common.FieldControl: #ReadOnly;
+  department_ID          @Common.FieldControl: #ReadOnly;
+  positionName           @Common.FieldControl: #ReadOnly;
+  position_ID            @Common.FieldControl: #ReadOnly;
+  spacesuitColorName     @Common.FieldControl: #ReadOnly;
+  createdAt              @Common.FieldControl: #ReadOnly;
+  createdBy              @Common.FieldControl: #ReadOnly;
+  modifiedAt             @Common.FieldControl: #ReadOnly;
+  modifiedBy             @Common.FieldControl: #ReadOnly;
+  stardustCollection     @Common.FieldControl: #Mandatory;
+  spacesuitColor_code    @Common.FieldControl: #Mandatory;
+};
+
+annotate service.Spacefarers with {
   spacesuitColor_code @(
     title: '{i18n>SpacesuitColor}',
     Common: {
+      Text: spacesuitColorName,
+      TextArrangement: #TextOnly,
       ValueListWithFixedValues: true,
       ValueList: {
         CollectionPath: 'SpacesuitColorOptions',

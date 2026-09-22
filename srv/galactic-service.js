@@ -4,6 +4,7 @@ const { hashPassword, verifyPassword } = require('./lib/password')
 const { validateSpacefarerUpdate } = require('./lib/validators')
 const { validateAndPrepareNewSpacefarer, verifyOnboardingPersisted } = require('./lib/onboarding')
 const { sendWelcomeEmail } = require('./lib/mail')
+const authCache = require('./lib/auth-cache')
 
 const SECRET_FIELDS = ['password', 'passwordHash', 'failedLoginAttempts', 'lockedUntil']
 const LOG = cds.log('onboarding')
@@ -287,6 +288,11 @@ module.exports = cds.service.impl(function () {
     email: req.user.id,
     planet: req.user.attr?.planet ?? req.user.planet,
   }))
+
+  this.on('logout', req => {
+    authCache.remove(req.headers.authorization)
+    return { success: true }
+  })
 
   this.on('changeMyPassword', async req => {
     const row = await cds.run(

@@ -157,11 +157,31 @@
           "options": {
             "settings": {
               "contextPath": "/Spacefarers",
+              "variantManagement": "None",
               "editableHeaderContent": false,
-              "controlConfiguration": {
-                "actions": {
-                  "Delete": {
-                    "visible": false
+              "content": {
+                "header": {
+                  "actions": {
+                    "BackToList": {
+                      "press": "galactic.spacefarers.ext.ObjectPageActions.backToList",
+                      "text": "Back to List",
+                      "visible": true
+                    },
+                    "EditProfile": {
+                      "press": "galactic.spacefarers.ext.ObjectPageActions.editProfile",
+                      "text": "Edit Profile",
+                      "visible": true
+                    },
+                    "ChangePassword": {
+                      "press": "galactic.spacefarers.ext.ObjectPageActions.changePassword",
+                      "text": "Change Password",
+                      "visible": true
+                    },
+                    "LeaveAdventure": {
+                      "press": "galactic.spacefarers.ext.ObjectPageActions.leaveAdventure",
+                      "text": "Delete Spacefarer Profile",
+                      "visible": true
+                    }
                   }
                 }
               }
