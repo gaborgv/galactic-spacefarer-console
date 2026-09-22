@@ -1,0 +1,7 @@
+{
+  "name": "galactic-spacefarers",
+  "version": "1.0.0",
+  "description": "Galactic Spacefarer Adventure List Report",
+  "keywords": ["ui5", "openui5", "sapui5"],
+  "main": "webapp/index.html"
+}

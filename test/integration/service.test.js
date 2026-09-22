@@ -284,13 +284,28 @@ describe('GalacticService', () => {
     }
   })
 
-  it('rejects batch requests', async () => {
-    try {
-      await POST(`${SVC}/$batch`, { requests: [] })
-      expect.fail('expected 501')
-    } catch (err) {
-      expect(err.response?.status ?? err.status).to.equal(501)
-    }
+  it('exposes localized spacesuit color options for value help', async () => {
+    const { data } = await axios.get(`${SVC}/SpacesuitColorOptions`, auth('picard@planet-x.gal', 'X'))
+    const silver = data.value.find(r => r.code === 'SILVER')
+    expect(silver.name).to.equal('Silver')
+  })
+
+  it('includes spacesuit color name on spacefarer list', async () => {
+    const { data } = await axios.get(`${SVC}/Spacefarers`, auth('picard@planet-x.gal', 'X'))
+    const picard = data.value.find(r => r.email === 'picard@planet-x.gal')
+    expect(picard.spacesuitColorName).to.equal('Silver')
+  })
+
+  it('filters spacefarers by exact stardust collection', async () => {
+    const { data: all } = await GET(`${SVC}/Spacefarers`, auth('picard@planet-x.gal', 'X'))
+    const picard = all.value.find(s => s.email === 'picard@planet-x.gal')
+    expect(picard).to.exist
+
+    const { data } = await GET(
+      `${SVC}/Spacefarers?$filter=${encodeURIComponent(`stardustCollection eq ${picard.stardustCollection}`)}`,
+      auth('picard@planet-x.gal', 'X')
+    )
+    expect(data.value.some(s => s.email === 'picard@planet-x.gal')).to.equal(true)
   })
 
   it('rejects invalid credentials', async () => {
@@ -299,6 +314,118 @@ describe('GalacticService', () => {
       expect.fail('expected 401')
     } catch (err) {
       expect(err.response.status).to.equal(401)
+    }
+  })
+
+  it('returns German spacesuit color labels when Accept-Language is de', async () => {
+    const { data } = await axios.get(`${SVC}/SpacesuitColorOptions`, {
+      ...auth('picard@planet-x.gal', 'X'),
+      headers: { 'Accept-Language': 'de' },
+    })
+    const silver = data.value.find(r => r.code === 'SILVER')
+    expect(silver.name).to.equal('Silber')
+  })
+
+  it('serves OData $metadata without authentication', async () => {
+    const { status } = await GET(`${SVC}/$metadata`)
+    expect(status).to.equal(200)
+  })
+
+  it('stubs local LREP flex endpoints for UI5 startup', async () => {
+    const { status, data } = await axios.get('/sap/bc/lrep/flex/data/galactic.spacefarers')
+    expect(status).to.equal(200)
+    expect(data.changes).to.be.an('array')
+    expect(data.compVariants).to.be.an('array')
+  })
+
+  it('accepts OData $filter with plus-encoded spaces', async () => {
+    const { data: all } = await GET(`${SVC}/Spacefarers`, auth('picard@planet-x.gal', 'X'))
+    const picard = all.value.find(s => s.email === 'picard@planet-x.gal')
+    expect(picard).to.exist
+
+    const filter = `stardustCollection eq ${picard.stardustCollection}`
+    const { data } = await GET(
+      `${SVC}/Spacefarers?$filter=${filter.replace(/ /g, '+')}`,
+      auth('picard@planet-x.gal', 'X')
+    )
+    expect(data.value.some(s => s.email === 'picard@planet-x.gal')).to.equal(true)
+  })
+})
+
+describe('GalacticService auth hardening', () => {
+  const authCache = require('../../srv/lib/auth-cache')
+  const { UPDATE } = cds.ql
+  const { resetByPrefix } = require('../../srv/lib/throttle')
+  let savedAuthFailLimit
+  const picardAuthHeader = `Basic ${Buffer.from('picard@planet-x.gal:X').toString('base64')}`
+
+  before(() => {
+    savedAuthFailLimit = process.env.GALACTIC_AUTH_FAIL_LIMIT
+    process.env.GALACTIC_AUTH_FAIL_LIMIT = '3'
+  })
+
+  after(() => {
+    if (savedAuthFailLimit === undefined) delete process.env.GALACTIC_AUTH_FAIL_LIMIT
+    else process.env.GALACTIC_AUTH_FAIL_LIMIT = savedAuthFailLimit
+  })
+
+  beforeEach(async () => {
+    authCache.clear()
+    resetByPrefix('auth-fail:')
+    await cds.run(
+      UPDATE('galactic.Spacefarers')
+        .set({ failedLoginAttempts: 0, lockedUntil: null })
+        .where({ email: 'picard@planet-x.gal' })
+    )
+  })
+
+  it('caches successful basic auth across OData requests', async () => {
+    expect(authCache.get(picardAuthHeader)).to.be.null
+
+    await GET(`${SVC}/Spacefarers`, auth('picard@planet-x.gal', 'X'))
+    expect(authCache.get(picardAuthHeader)?.id).to.equal('picard@planet-x.gal')
+
+    await GET(`${SVC}/Spacefarers`, auth('picard@planet-x.gal', 'X'))
+    expect(authCache.get(picardAuthHeader)?.id).to.equal('picard@planet-x.gal')
+  })
+
+  it('returns 429 after too many failed passwords from the same client', async () => {
+    for (let i = 0; i < 3; i++) {
+      try {
+        await axios.get(`${SVC}/Spacefarers`, auth('picard@planet-x.gal', 'wrong'))
+        expect.fail('expected 401')
+      } catch (err) {
+        expect(err.response.status).to.equal(401)
+      }
+    }
+
+    try {
+      await axios.get(`${SVC}/Spacefarers`, auth('picard@planet-x.gal', 'wrong'))
+      expect.fail('expected 429')
+    } catch (err) {
+      expect(err.response.status).to.equal(429)
+      expect(err.response.data.error.message).to.match(/Too many authentication attempts/)
+    }
+  })
+
+  it('clears auth-fail throttling after a successful login', async () => {
+    for (let i = 0; i < 2; i++) {
+      try {
+        await axios.get(`${SVC}/Spacefarers`, auth('picard@planet-x.gal', 'wrong'))
+      } catch (err) {
+        expect(err.response.status).to.equal(401)
+      }
+    }
+
+    await GET(`${SVC}/Spacefarers`, auth('picard@planet-x.gal', 'X'))
+
+    for (let i = 0; i < 3; i++) {
+      try {
+        await axios.get(`${SVC}/Spacefarers`, auth('picard@planet-x.gal', 'wrong'))
+        expect.fail('expected 401')
+      } catch (err) {
+        expect(err.response.status).to.equal(401)
+      }
     }
   })
 })

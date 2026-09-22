@@ -6,6 +6,7 @@
   "dependencies": {
     "@cap-js/sqlite": "^2",
     "@sap/cds": "^9",
+    "@sap/cds-fiori": "^2.3.0",
     "bcrypt": "^6.0.0"
   },
   "devDependencies": {
@@ -23,6 +24,10 @@
     "test": "CDS_ENV=test mocha test/integration/**/*.test.js --timeout 30000"
   },
   "cds": {
+    "fiori": {
+      "preview": true,
+      "routes": true
+    },
     "requires": {
       "auth": {
         "impl": "srv/galactic-auth.js"
