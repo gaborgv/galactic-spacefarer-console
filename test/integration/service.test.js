@@ -131,10 +131,10 @@ describe('GalacticService', () => {
     expect(data.originPlanetName).to.equal('Planet X')
   })
 
-  it('allows a spacefarer to update their own full profile', async () => {
+  it('keeps identity fields unchanged when they are sent on UPDATE', async () => {
     const { status, data } = await PATCH(`${SVC}/Spacefarers(${PICARD})`, {
       stardustCollection: 125,
-      name: 'Jean-Luc Picard',
+      name: 'Not Picard',
       spacesuitColor_code: 'SILVER',
       navigationSkill_level: 6,
       department_ID: ENG_DEPT_X,
@@ -143,8 +143,8 @@ describe('GalacticService', () => {
     expect(status).to.equal(200)
     expect(data.stardustCollection).to.equal(125)
     expect(data.spacesuitColor_code).to.equal('SILVER')
-    expect(data.navigationSkill_level).to.equal(6)
-    expect(data.department_ID).to.equal(ENG_DEPT_X)
+    expect(data.name).to.equal('Jean-Luc Picard')
+    expect(data.navigationSkill_level).to.not.equal(6)
   })
 
   it('allows a spacefarer to update only stardust and spacesuit color', async () => {
@@ -165,28 +165,25 @@ describe('GalacticService', () => {
     expect(restored.data.spacesuitColor_code).to.equal('SILVER')
   })
 
-  it('rejects incoherent department/position pair on UPDATE', async () => {
-    try {
-      await PATCH(`${SVC}/Spacefarers(${PICARD})`, {
-        department_ID: '11111111-1111-1111-1111-111111111102',
-        position_ID: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1',
-      }, auth('picard@planet-x.gal', 'X'))
-      expect.fail('expected 400')
-    } catch (err) {
-      expect(err.response?.status ?? err.status).to.equal(400)
-    }
+  it('ignores department and position changes on UPDATE', async () => {
+    const before = await GET(`${SVC}/Spacefarers(${PICARD})`, auth('picard@planet-x.gal', 'X'))
+    const { status, data } = await PATCH(`${SVC}/Spacefarers(${PICARD})`, {
+      department_ID: '11111111-1111-1111-1111-111111111102',
+      position_ID: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1',
+    }, auth('picard@planet-x.gal', 'X'))
+    expect(status).to.equal(200)
+    expect(data.department_ID).to.equal(before.data.department_ID)
+    expect(data.position_ID).to.equal(before.data.position_ID)
   })
 
-  it('rejects cross-planet department on UPDATE', async () => {
-    try {
-      await PATCH(`${SVC}/Spacefarers(${PICARD})`, {
-        department_ID: '22222222-2222-2222-2222-222222222201',
-        position_ID: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1',
-      }, auth('picard@planet-x.gal', 'X'))
-      expect.fail('expected 400')
-    } catch (err) {
-      expect(err.response?.status ?? err.status).to.equal(400)
-    }
+  it('ignores cross-planet department on UPDATE', async () => {
+    const before = await GET(`${SVC}/Spacefarers(${PICARD})`, auth('picard@planet-x.gal', 'X'))
+    const { status, data } = await PATCH(`${SVC}/Spacefarers(${PICARD})`, {
+      department_ID: '22222222-2222-2222-2222-222222222201',
+      position_ID: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1',
+    }, auth('picard@planet-x.gal', 'X'))
+    expect(status).to.equal(200)
+    expect(data.department_ID).to.equal(before.data.department_ID)
   })
 
   it('forbids updating another spacefarer on the same planet', async () => {

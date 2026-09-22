@@ -71,7 +71,7 @@ Unauthenticated visits to the list redirect here automatically. Registration is 
 
 Click a spacefarer row to open the Object Page. You can view any spacefarer on your planet read-only. On your own profile, use **Edit Profile**, **Change Password**, and **Delete Spacefarer Profile** (soft-delete).
 
-**Edit Profile** switches the Object Page into edit mode. Only stardust collection and spacesuit color are editable; Save / Cancel are the standard Fiori footer actions.
+**Edit Profile** opens a dialog to change stardust collection and spacesuit color. Native Object Page edit is not used — Fiori Elements requires draft or sticky services for that, which this app does not enable.
 
 If the page stays blank, hard-refresh and check the browser console. Demo credentials: `picard@planet-x.gal` / `X`.
 

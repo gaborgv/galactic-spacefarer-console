@@ -4,8 +4,20 @@ annotate service.Spacefarers with @(
   title: '{i18n>SpacefarersListTitle}',
   cds.search: name,
   Capabilities.DeleteRestrictions: { Deletable: false },
+  Capabilities.UpdateRestrictions: {
+    Updatable: true,
+    NonUpdatableProperties: [
+      name,
+      email,
+      originPlanet_code,
+      navigationSkill_level,
+      department_ID,
+      position_ID,
+    ],
+  },
   UI: {
     DeleteHidden: true,
+    UpdateHidden: true,
     CommunicationHidden: true,
     SelectionFields: [stardustCollection, spacesuitColor_code],
     LineItem: [
@@ -81,26 +93,6 @@ annotate service.Spacefarers with {
   department_ID          @UI.HiddenFilter;
   position_ID            @UI.HiddenFilter;
   spacesuitColor_code    @UI.HiddenFilter;
-};
-
-annotate service.Spacefarers with {
-  name                   @Common.FieldControl: #ReadOnly;
-  email                  @Common.FieldControl: #ReadOnly;
-  originPlanetName       @Common.FieldControl: #ReadOnly;
-  originPlanet_code      @Common.FieldControl: #ReadOnly;
-  navigationSkillLabel   @Common.FieldControl: #ReadOnly;
-  navigationSkill_level  @Common.FieldControl: #ReadOnly;
-  departmentName         @Common.FieldControl: #ReadOnly;
-  department_ID          @Common.FieldControl: #ReadOnly;
-  positionName           @Common.FieldControl: #ReadOnly;
-  position_ID            @Common.FieldControl: #ReadOnly;
-  spacesuitColorName     @Common.FieldControl: #ReadOnly;
-  createdAt              @Common.FieldControl: #ReadOnly;
-  createdBy              @Common.FieldControl: #ReadOnly;
-  modifiedAt             @Common.FieldControl: #ReadOnly;
-  modifiedBy             @Common.FieldControl: #ReadOnly;
-  stardustCollection     @Common.FieldControl: #Mandatory;
-  spacesuitColor_code    @Common.FieldControl: #Mandatory;
 };
 
 annotate service.Spacefarers with {
