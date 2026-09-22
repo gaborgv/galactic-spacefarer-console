@@ -141,8 +141,20 @@ function stripVirtualSelect(req) {
   }
 }
 
-function filterOptionsByLocale(req) {
-  req.query.where({ locale: localeFromRequest(req) })
+async function readColorOptions(req) {
+  const locale = localeFromRequest(req)
+  const rows = await cds.run(
+    SELECT.from(DB_COLOR_TEXTS).columns('color_code', 'locale', 'name').where({ locale })
+  )
+  return rows.map(r => ({ code: r.color_code, locale: r.locale, name: r.name }))
+}
+
+async function readSkillChoices(req) {
+  const locale = localeFromRequest(req)
+  const rows = await cds.run(
+    SELECT.from(DB_SKILL_TEXTS).columns('skillLevel_level', 'locale', 'label').where({ locale })
+  )
+  return rows.map(r => ({ level: r.skillLevel_level, locale: r.locale, name: r.label }))
 }
 
 module.exports = cds.service.impl(function () {
@@ -159,8 +171,8 @@ module.exports = cds.service.impl(function () {
   })
   this.before('READ', SpacefarersAll, rejectSecretSelect)
 
-  this.before('READ', SpacesuitColorOptions, filterOptionsByLocale)
-  this.before('READ', NavigationSkillChoices, filterOptionsByLocale)
+  this.on('READ', SpacesuitColorOptions, readColorOptions)
+  this.on('READ', NavigationSkillChoices, readSkillChoices)
 
   this.after('READ', Spacefarers, async (results, req) => {
     const rows = Array.isArray(results) ? results : results ? [results] : []
@@ -217,7 +229,14 @@ module.exports = cds.service.impl(function () {
   })
 
   this.before('UPDATE', Spacefarers, async req => {
-    for (const f of ['passwordHash', 'password', 'failedLoginAttempts', 'lockedUntil', 'email', 'originPlanet', 'originPlanet_code']) {
+    for (const f of [
+      'passwordHash', 'password', 'failedLoginAttempts', 'lockedUntil',
+      'email', 'name',
+      'originPlanet', 'originPlanet_code',
+      'navigationSkill', 'navigationSkill_level',
+      'department', 'department_ID',
+      'position', 'position_ID',
+    ]) {
       delete req.data[f]
     }
 

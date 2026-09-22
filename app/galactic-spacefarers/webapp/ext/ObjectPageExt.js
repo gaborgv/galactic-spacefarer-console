@@ -17,11 +17,6 @@ sap.ui.define([
     return Boolean(OWN_PROFILE_LABELS[text])
   }
 
-  function isPageEditable(view) {
-    const ui = view?.getModel?.('ui')
-    return Boolean(ui?.getProperty?.('/isEditable') || ui?.getProperty?.('/editable'))
-  }
-
   function hideUiChrome(view) {
     if (!view) return
     view.findAggregatedObjects(true, control => {
@@ -90,11 +85,10 @@ sap.ui.define([
       hideStandardEdit(view)
       if (!this._ownershipKnown) return
 
-      const editing = isPageEditable(view)
       view.findAggregatedObjects(true, control => {
         if (!control?.isA('sap.m.Button')) return
         if (!isOwnProfileAction(control)) return
-        control.setVisible(this._isOwnProfile && !editing)
+        control.setVisible(this._isOwnProfile)
       })
     },
   })

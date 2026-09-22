@@ -1,14 +1,18 @@
 sap.ui.define([
+  'sap/ui/model/json/JSONModel',
   'sap/m/MessageBox',
   'sap/m/MessageToast',
   'sap/ui/core/Fragment',
-], function (MessageBox, MessageToast, Fragment) {
+], function (JSONModel, MessageBox, MessageToast, Fragment) {
   'use strict'
 
   const SERVICE = '/galactic'
   const REGISTER_URL = '/galactic-spacefarers/webapp/register.html'
   const PASSWORD_FRAGMENT_ID = 'galacticChangePassword'
+  const EDIT_FRAGMENT_ID = 'galacticEditProfile'
 
+  const profileModel = new JSONModel({})
+  let editDialog
   let passwordDialog
   let pageExtension
 
@@ -161,6 +165,28 @@ sap.ui.define([
     throw new Error(body?.error?.message ?? `Request failed: ${response.status}`)
   }
 
+  async function fetchJson(path) {
+    const response = await fetch(`${SERVICE}${path}`, { credentials: 'include' })
+    if (!response.ok) throw new Error(`Request failed: ${path}`)
+    const payload = await response.json()
+    return payload.value ?? payload
+  }
+
+  function idFromHash() {
+    const match = String(window.location.hash ?? '').match(/Spacefarers\(([^)]+)\)/i)
+    return match?.[1]?.replace(/^ID=/, '').replace(/['"]/g, '') ?? null
+  }
+
+  async function refreshContext(ctx) {
+    if (ctx?.refresh) {
+      await ctx.refresh()
+      return
+    }
+    if (ctx?.getBinding?.()?.refresh) {
+      ctx.getBinding().refresh()
+    }
+  }
+
   async function invokeAction(actionName, params) {
     const response = await fetch(`${SERVICE}/${actionName}`, {
       method: 'POST',
@@ -189,15 +215,72 @@ sap.ui.define([
         const ownership = await requireOwnProfile(oContext)
         if (!ownership) return
 
-        const api = getExtensionAPI(this)
         const ctx = ownership.ctx ?? getContext(oContext)
-        if (!api?.getEditFlow || !ctx) {
-          MessageBox.error('Could not start edit mode')
+        const [id, stardustCollection, spacesuitColor_code] = await Promise.all([
+          readContextProperty(ctx, 'ID'),
+          readContextProperty(ctx, 'stardustCollection'),
+          readContextProperty(ctx, 'spacesuitColor_code'),
+        ])
+        const profileId = id ?? idFromHash()
+        if (!profileId) {
+          MessageBox.error('Could not read profile')
           return
         }
-        await api.getEditFlow().editDocument(ctx)
+
+        let stardust = stardustCollection
+        let color = spacesuitColor_code
+        if (stardust == null || !color) {
+          const row = await fetchJson(`/Spacefarers(${profileId})`)
+          stardust = stardust ?? row.stardustCollection
+          color = color ?? row.spacesuitColor_code
+        }
+
+        const colors = await fetchJson('/SpacesuitColorOptions')
+        profileModel.setData({
+          ID: profileId,
+          stardustCollection: stardust,
+          spacesuitColor_code: color,
+          colors,
+        })
+
+        if (!editDialog) {
+          editDialog = await Fragment.load({
+            id: EDIT_FRAGMENT_ID,
+            name: 'galactic.spacefarers.view.EditProfileDialog',
+            controller: actions,
+          })
+          editDialog.setModel(profileModel, 'profile')
+        }
+        editDialog.data('pageContext', ctx)
+        editDialog.open()
       } catch (err) {
-        MessageBox.error(err.message ?? 'Could not start edit mode')
+        MessageBox.error(err.message ?? 'Could not open edit dialog')
+      }
+    },
+
+    onEditProfileCancel() {
+      editDialog?.close()
+    },
+
+    async onEditProfileSave() {
+      const profile = profileModel.getData()
+      const payload = {
+        stardustCollection: Number(profile.stardustCollection),
+        spacesuitColor_code: profile.spacesuitColor_code,
+      }
+
+      if (Number.isNaN(payload.stardustCollection) || !payload.spacesuitColor_code) {
+        MessageToast.show('Complete all required fields')
+        return
+      }
+
+      try {
+        await patchSpacefarer(profile.ID, payload)
+        editDialog.close()
+        MessageToast.show('Profile updated')
+        await refreshContext(editDialog.data('pageContext'))
+      } catch (err) {
+        MessageBox.error(err.message ?? 'Profile update failed')
       }
     },
 
@@ -261,7 +344,7 @@ sap.ui.define([
           emphasizedAction: MessageBox.Action.OK,
           onClose: async action => {
             if (action !== MessageBox.Action.OK) return
-            const id = await readContextProperty(ownership.ctx, 'ID')
+            const id = await readContextProperty(ownership.ctx, 'ID') ?? idFromHash()
             if (!id) {
               MessageBox.error('Could not resolve profile ID')
               return
