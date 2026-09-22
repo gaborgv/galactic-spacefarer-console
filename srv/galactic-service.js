@@ -34,26 +34,89 @@ async function createSpacefarerViaService(srv, Spacefarers, entry, tx) {
   return srv.dispatch(createReq)
 }
 
+const DB_COLOR_TEXTS = 'galactic.SpacesuitColorTexts'
+const SUPPORTED_LOCALES = new Set(['en', 'de'])
+
+function localeFromRequest(req) {
+  const raw = req?.locale ?? req?.headers?.['accept-language'] ?? 'en'
+  const locale = String(raw).split(/[,;-]/)[0].trim().toLowerCase() || 'en'
+  return SUPPORTED_LOCALES.has(locale) ? locale : 'en'
+}
+
+function columnName(col) {
+  if (typeof col === 'string') return col
+  if (col.as) return col.as
+  if (col.ref) return col.ref[col.ref.length - 1]
+  return null
+}
+
+async function enrichSpacesuitColorNames(rows, locale) {
+  if (!rows.length) return
+  const codes = [...new Set(rows.map(r => r.spacesuitColor_code ?? r.spacesuitColor?.code).filter(Boolean))]
+  if (!codes.length) return
+
+  const texts = await cds.run(
+    SELECT.from(DB_COLOR_TEXTS).columns('color_code', 'locale', 'name').where({ color_code: codes })
+  )
+  const byCode = new Map()
+  for (const t of texts) {
+    const code = t.color_code
+    const entry = byCode.get(code) ?? {}
+    entry[t.locale] = t.name
+    byCode.set(code, entry)
+  }
+
+  for (const row of rows) {
+    const code = row.spacesuitColor_code ?? row.spacesuitColor?.code
+    const names = byCode.get(code)
+    row.spacesuitColorName = names?.[locale] ?? names?.en ?? code
+  }
+}
+
 function rejectSecretSelect(req) {
   const cols = req.query?.SELECT?.columns
   if (!cols) return
   const names = cols.flatMap(c => {
-    if (typeof c === 'string') return [c]
-    if (c.ref) return [c.ref[c.ref.length - 1]]
-    if (c.as) return [c.as]
-    return []
+    const name = columnName(c)
+    return name ? [name] : []
   })
   if (names.some(n => SECRET_FIELDS.includes(n))) {
     req.reject(400, 'Requested field is not readable')
   }
 }
 
+function stripVirtualSelect(req) {
+  const cols = req.query?.SELECT?.columns
+  if (!cols) return
+  const filtered = cols.filter(c => columnName(c) !== 'spacesuitColorName')
+  if (filtered.length !== cols.length) {
+    req.query.SELECT.columns = filtered.length ? filtered : undefined
+    req._enrichSpacesuitColorName = true
+  }
+}
+
 module.exports = cds.service.impl(function () {
-  const { Spacefarers, SpacefarersAll } = this.entities
+  const { Spacefarers, SpacefarersAll, SpacesuitColorOptions } = this.entities
 
-  this.before('READ', [Spacefarers, SpacefarersAll], rejectSecretSelect)
+  this.before('READ', Spacefarers, req => {
+    rejectSecretSelect(req)
+    stripVirtualSelect(req)
+  })
+  this.before('READ', SpacefarersAll, rejectSecretSelect)
 
-  this.after('READ', [Spacefarers, SpacefarersAll], results => {
+  this.before('READ', SpacesuitColorOptions, req => {
+    req.query.where({ locale: localeFromRequest(req) })
+  })
+
+  this.after('READ', Spacefarers, async (results, req) => {
+    const rows = Array.isArray(results) ? results : results ? [results] : []
+    rows.forEach(stripSecrets)
+    if (req._enrichSpacesuitColorName || rows.some(r => r.spacesuitColor_code || r.spacesuitColor?.code)) {
+      await enrichSpacesuitColorNames(rows, localeFromRequest(req))
+    }
+  })
+
+  this.after('READ', SpacefarersAll, results => {
     if (Array.isArray(results)) results.forEach(stripSecrets)
     else stripSecrets(results)
   })

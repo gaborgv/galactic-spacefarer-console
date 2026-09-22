@@ -284,13 +284,28 @@ describe('GalacticService', () => {
     }
   })
 
-  it('rejects batch requests', async () => {
-    try {
-      await POST(`${SVC}/$batch`, { requests: [] })
-      expect.fail('expected 501')
-    } catch (err) {
-      expect(err.response?.status ?? err.status).to.equal(501)
-    }
+  it('exposes localized spacesuit color options for value help', async () => {
+    const { data } = await axios.get(`${SVC}/SpacesuitColorOptions`, auth('picard@planet-x.gal', 'X'))
+    const silver = data.value.find(r => r.code === 'SILVER')
+    expect(silver.name).to.equal('Silver')
+  })
+
+  it('includes spacesuit color name on spacefarer list', async () => {
+    const { data } = await axios.get(`${SVC}/Spacefarers`, auth('picard@planet-x.gal', 'X'))
+    const picard = data.value.find(r => r.email === 'picard@planet-x.gal')
+    expect(picard.spacesuitColorName).to.equal('Silver')
+  })
+
+  it('filters spacefarers by exact stardust collection', async () => {
+    const { data: all } = await GET(`${SVC}/Spacefarers`, auth('picard@planet-x.gal', 'X'))
+    const picard = all.value.find(s => s.email === 'picard@planet-x.gal')
+    expect(picard).to.exist
+
+    const { data } = await GET(
+      `${SVC}/Spacefarers?$filter=${encodeURIComponent(`stardustCollection eq ${picard.stardustCollection}`)}`,
+      auth('picard@planet-x.gal', 'X')
+    )
+    expect(data.value.some(s => s.email === 'picard@planet-x.gal')).to.equal(true)
   })
 
   it('rejects invalid credentials', async () => {

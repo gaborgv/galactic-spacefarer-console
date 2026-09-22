@@ -23,10 +23,23 @@ service GalacticService {
   @(requires: 'any')
   entity SpacesuitColors as projection on db.SpacesuitColors { * } where isDeleted = false;
 
+  @readonly
+  @(requires: 'any')
+  entity SpacesuitColorTexts as projection on db.SpacesuitColorTexts { * };
+
+  /** Localized code/name pairs for value help and display text (locale filtered at runtime). */
+  @readonly
+  @(requires: 'any')
+  entity SpacesuitColorOptions as select from SpacesuitColorTexts as t {
+    key t.color.code as code,
+    t.locale,
+    t.name
+  };
+
   @cds.redirection.target
   @(requires: 'authenticated-user')
   @(restrict: [
-    { grant: 'READ',   to: 'authenticated-user', where: 'originPlanet.code = $user.planet' },
+    { grant: 'READ',   to: 'authenticated-user', where: 'originPlanet_code = $user.planet' },
     { grant: 'UPDATE', to: 'authenticated-user', where: 'email = $user.id' }
   ])
   entity Spacefarers as projection on db.Spacefarers
@@ -34,7 +47,7 @@ service GalacticService {
 
   @(requires: 'authenticated-user')
   @(restrict: [
-    { grant: 'READ', to: 'authenticated-user', where: 'originPlanet.code = $user.planet' }
+    { grant: 'READ', to: 'authenticated-user', where: 'originPlanet_code = $user.planet' }
   ])
   entity SpacefarersAll as projection on db.Spacefarers excluding { passwordHash, failedLoginAttempts };
 
@@ -62,4 +75,8 @@ service GalacticService {
     oldPassword : String,
     newPassword : String
   ) returns { success : Boolean };
+}
+
+extend GalacticService.Spacefarers with columns {
+  virtual null as spacesuitColorName : String
 }

@@ -6,8 +6,13 @@ function windowMs() {
 }
 
 function maxRequests() {
-  const n = parseInt(process.env.GALACTIC_RATE_LIMIT_MAX ?? '60', 10)
-  return Number.isFinite(n) && n > 0 ? n : 60
+  const n = parseInt(process.env.GALACTIC_RATE_LIMIT_MAX ?? '2000', 10)
+  return Number.isFinite(n) && n > 0 ? n : 2000
+}
+
+function maxAuthFailures() {
+  const n = parseInt(process.env.GALACTIC_AUTH_FAIL_LIMIT ?? '500', 10)
+  return Number.isFinite(n) && n > 0 ? n : 500
 }
 
 function clientKey(req) {
@@ -46,4 +51,8 @@ function middleware({ label = 'request' } = {}) {
   }
 }
 
-module.exports = { check, middleware, clientKey, windowMs, maxRequests }
+function reset(key) {
+  buckets.delete(key)
+}
+
+module.exports = { check, middleware, clientKey, windowMs, maxRequests, maxAuthFailures, reset }

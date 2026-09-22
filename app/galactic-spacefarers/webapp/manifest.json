@@ -1,0 +1,190 @@
+{
+  "_version": "1.49.0",
+  "sap.app": {
+    "id": "galactic.spacefarers",
+    "type": "application",
+    "title": "{{appTitle}}",
+    "description": "{{appDescription}}",
+    "i18n": "i18n/i18n.properties",
+    "applicationVersion": {
+      "version": "1.0.0"
+    },
+    "dataSources": {
+      "GalacticService": {
+        "uri": "/galactic/",
+        "type": "OData",
+        "settings": {
+          "odataVersion": "4.0"
+        }
+      }
+    }
+  },
+  "sap.ui": {
+    "technology": "UI5",
+    "deviceTypes": {
+      "desktop": true,
+      "tablet": true,
+      "phone": true
+    }
+  },
+  "sap.ui5": {
+    "extends": {
+      "extensions": {
+        "sap.ui.controllerExtensions": {
+          "sap.fe.templates.ListReport.view.ListReport": {
+            "controllerName": "galactic.spacefarers.ext.ListReportExt"
+          }
+        }
+      }
+    },
+    "flexEnabled": false,
+    "flexibilityServices": "",
+    "dependencies": {
+      "minUI5Version": "1.120.0",
+      "libs": {
+        "sap.ui.core": {},
+        "sap.fe.templates": {}
+      }
+    },
+    "models": {
+      "i18n": {
+        "type": "sap.ui.model.resource.ResourceModel",
+        "uri": "i18n/i18n.properties"
+      },
+      "": {
+        "dataSource": "GalacticService",
+        "preload": true,
+        "settings": {
+          "synchronizationMode": "None",
+          "operationMode": "Server",
+          "autoExpandSelect": false,
+          "earlyRequests": false
+        }
+      }
+    },
+    "routing": {
+      "routes": [
+        {
+          "pattern": ":?query:",
+          "name": "SpacefarersList",
+          "target": "SpacefarersList"
+        },
+        {
+          "pattern": "Spacefarers({key}):?query:",
+          "name": "SpacefarersObjectPage",
+          "target": "SpacefarersObjectPage"
+        }
+      ],
+      "targets": {
+        "SpacefarersList": {
+          "type": "Component",
+          "id": "SpacefarersList",
+          "name": "sap.fe.templates.ListReport",
+          "options": {
+            "settings": {
+              "contextPath": "/Spacefarers",
+              "initialLoad": "Enabled",
+              "variantManagement": "None",
+              "share": {
+                "showSendEmail": false,
+                "showSaveAsTile": false,
+                "showShareInWorkzone": false,
+                "teams": {
+                  "showMsTeamsOptions": false
+                }
+              },
+              "navigation": {
+                "Spacefarers": {
+                  "detail": {
+                    "route": "SpacefarersObjectPage"
+                  }
+                }
+              },
+              "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.SelectionFields": {
+                  "filterFields": {
+                    "spacesuitColor_code": {
+                      "label": "Spacesuit Color"
+                    },
+                    "name": { "availability": "Hidden" },
+                    "email": { "availability": "Hidden" },
+                    "ID": { "availability": "Hidden" },
+                    "passwordHash": { "availability": "Hidden" },
+                    "failedLoginAttempts": { "availability": "Hidden" },
+                    "lockedUntil": { "availability": "Hidden" },
+                    "spacesuitColorName": { "availability": "Hidden" },
+                    "originPlanet_code": { "availability": "Hidden" },
+                    "navigationSkill_level": { "availability": "Hidden" },
+                    "department_ID": { "availability": "Hidden" },
+                    "position_ID": { "availability": "Hidden" },
+                    "isDeleted": { "availability": "Hidden" },
+                    "createdAt": { "availability": "Hidden" },
+                    "createdBy": { "availability": "Hidden" },
+                    "modifiedAt": { "availability": "Hidden" },
+                    "modifiedBy": { "availability": "Hidden" }
+                  }
+                },
+                "@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "ResponsiveTable",
+                    "widthIncludingColumnHeader": true
+                  },
+                  "columns": {
+                    "DataField::name": {
+                      "width": "45%"
+                    },
+                    "DataField::stardustCollection": {
+                      "width": "25%"
+                    },
+                    "DataField::spacesuitColorName": {
+                      "width": "30%"
+                    }
+                  },
+                  "actions": {
+                    "SendEmail": {
+                      "visible": false
+                    },
+                    "Share": {
+                      "visible": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "SpacefarersObjectPage": {
+          "type": "Component",
+          "id": "SpacefarersObjectPage",
+          "name": "sap.fe.templates.ObjectPage",
+          "options": {
+            "settings": {
+              "contextPath": "/Spacefarers",
+              "editableHeaderContent": false
+            }
+          }
+        }
+      }
+    },
+    "contentDensities": {
+      "compact": true,
+      "cozy": true
+    }
+  },
+  "sap.fiori": {
+    "registrationIds": [],
+    "archeType": "transactional"
+  },
+  "sap.fe": {
+    "app": {
+      "share": {
+        "showSendEmail": false,
+        "showSaveAsTile": false,
+        "showShareInWorkzone": false,
+        "teams": {
+          "showMsTeamsOptions": false
+        }
+      }
+    }
+  }
+}

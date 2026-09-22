@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Galactic Spacefarer Adventure</title>
+    <style>
+      html,
+      body,
+      #content,
+      #content-uiarea {
+        height: 100%;
+        margin: 0;
+      }
+
+      /* Stretch list report table across the full content width */
+      .sapFDynamicPageContent .sapMList,
+      .sapFDynamicPageContent .sapMListTbl {
+        width: 100% !important;
+      }
+
+      /* Hide share menu and adapt-filters chrome */
+      .sapFDynamicPageTitleMainActions button[aria-label*="Share"],
+      .sapFDynamicPageTitleMainActions button[title*="Share"],
+      [id*="AdaptFilter"],
+      [id*="adaptFilter"] {
+        display: none !important;
+      }
+    </style>
+    <script
+      id="sap-ui-bootstrap"
+      src="https://ui5.sap.com/1.120.35/resources/sap-ui-core.js"
+      data-sap-ui-theme="sap_horizon"
+      data-sap-ui-libs="sap.ui.core,sap.m,sap.ui.layout,sap.ui.generic.app,sap.ui.mdc,sap.f,sap.fe.core,sap.fe.templates,sap.fe.macros"
+      data-sap-ui-resourceroots='{"galactic.spacefarers": "/galactic-spacefarers/webapp/"}'
+      data-sap-ui-oninit="bootGalacticApp"
+      data-sap-ui-flexibilityServices='""'
+      data-sap-ui-compatVersion="edge"
+      data-sap-ui-async="true"
+      data-sap-ui-xx-componentPreload="off"
+      data-sap-ui-frameOptions="allow"
+    ></script>
+    <script>
+      function bootGalacticApp() {
+        sap.ui.require(
+          ['sap/ui/core/ComponentContainer', 'sap/ui/core/Component'],
+          function (ComponentContainer, Component) {
+            Component.create({
+              name: 'galactic.spacefarers',
+              id: 'galactic.spacefarers',
+              manifest: true,
+            })
+              .then(function (component) {
+                new ComponentContainer({
+                  component: component,
+                  async: false,
+                  height: '100%',
+                }).placeAt('content')
+              })
+              .catch(function (err) {
+                console.error('Failed to start Galactic Spacefarer Adventure:', err)
+              })
+          }
+        )
+      }
+    </script>
+  </head>
+  <body class="sapUiBody sapUiSizeCompact" id="content"></body>
+</html>

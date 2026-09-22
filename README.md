@@ -30,6 +30,37 @@ npm run watch
 
 Open the app URL from the terminal output (default `http://localhost:4004`).
 
+### Fiori List Report
+
+After `npm run watch`, open the **Galactic Spacefarer Adventure** app:
+
+```
+http://localhost:4004/galactic-spacefarers/webapp/index.html
+```
+
+Safari only prompts for Basic Auth when the app requests protected OData data (`/galactic/Spacefarers`). `$metadata` is public, so if the UI fails to start you may see no auth prompt at all — hard-refresh after pulling UI fixes.
+
+Alternative CAP preview (useful while iterating on annotations):
+
+```
+http://localhost:4004/$fiori-preview/GalacticService/Spacefarers#preview-app
+```
+
+Sign in with HTTP Basic auth when prompted (email + password = origin planet code):
+
+| email               | password |
+| ------------------- | -------- |
+| picard@planet-x.gal | X        |
+| worf@planet-y.gal   | Y        |
+
+Planet X users see Planet X spacefarers only; Planet Y users see Planet Y spacefarers only.
+
+The list shows **name**, **email**, **stardust collection**, and **spacesuit color** (localized name, not hex). Sort, filter, and pagination are provided by Fiori Elements.
+
+Safari (and other browsers) only show the Basic Auth dialog when the app requests protected OData data (`/galactic/Spacefarers`). `$metadata` is public, so if the UI fails to start you may see no auth prompt at all.
+
+If the page stays blank, hard-refresh and check the browser console. Demo credentials: `picard@planet-x.gal` / `X`.
+
 ### Restarting the dev server
 
 If port 4004 is in use or you see `SqliteError: cannot rollback - no transaction is active`, a previous `cds watch` likely still holds the DB connection. **Don't close the terminal window abruptly** — use `Ctrl+C` in the watch terminal first.
@@ -82,7 +113,9 @@ Optional env vars:
 | -------- | ------- | ------- |
 | `GALACTIC_LOCKOUT_MAX_ATTEMPTS` | `5` | Failed logins before lockout |
 | `GALACTIC_LOCKOUT_DURATION_MINUTES` | `15` | Lockout duration |
-| `GALACTIC_RATE_LIMIT_MAX` | `60` | Requests per window per IP (register/reset/auth) |
+| `GALACTIC_RATE_LIMIT_MAX` | `2000` | Requests per window per IP (register/reset) |
+| `GALACTIC_AUTH_FAIL_LIMIT` | `500` | Failed logins per IP per window before 429 |
+| `GALACTIC_AUTH_CACHE_TTL_MS` | `600000` | Basic Auth session cache (10 min) |
 | `GALACTIC_RATE_LIMIT_WINDOW_MS` | `60000` | Rate-limit window |
 | `GALACTIC_STARDUST_MAX` | `999999` | Maximum stardust collection (validation and post-bonus cap) |
 | `GALACTIC_BONUS_DEPARTMENT_CODES` | `ENG` | Comma-separated department codes that receive the extra +200 stardust signup bonus |
