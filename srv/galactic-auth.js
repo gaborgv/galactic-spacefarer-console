@@ -15,7 +15,7 @@ module.exports = async function galacticAuth(req, res, next) {
   if (!auth?.match(/^basic /i)) {
     const path = `${req.baseUrl ?? ''}${req.path ?? ''}`
     const isPublicRead = req.method === 'GET' &&
-      /\/(Planets|Departments|Positions|NavigationSkillLevels|SpacesuitColors|SpacesuitColorOptions|\$metadata)(\/|$|\?)/.test(path)
+      /\/(Planets|Departments|Positions|NavigationSkillLevels|NavigationSkillChoices|SpacesuitColors|SpacesuitColorOptions|\$metadata)(\/|$|\?)/.test(path)
     const isPublicAction = req.method === 'POST' &&
       /\/(registerSpacefarer|resetPassword)(\/|$|\?)/.test(path)
     if (isPublicRead || isPublicAction) {

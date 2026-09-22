@@ -143,8 +143,15 @@ function stripVirtualSelect(req) {
 
 async function readColorOptions(req) {
   const locale = localeFromRequest(req)
+  const colors = await cds.run(
+    SELECT.from('galactic.SpacesuitColors').columns('code').where({ isDeleted: false })
+  )
+  const codes = colors.map(c => c.code)
+  if (!codes.length) return []
   const rows = await cds.run(
-    SELECT.from(DB_COLOR_TEXTS).columns('color_code', 'locale', 'name').where({ locale })
+    SELECT.from(DB_COLOR_TEXTS)
+      .columns('color_code', 'locale', 'name')
+      .where({ locale, color_code: codes })
   )
   return rows.map(r => ({ code: r.color_code, locale: r.locale, name: r.name }))
 }
@@ -300,6 +307,7 @@ module.exports = cds.service.impl(function () {
         })
         .where({ ID: row.ID })
     )
+    authCache.removeByUserId(email)
     return { success: true }
   })
 
@@ -309,6 +317,7 @@ module.exports = cds.service.impl(function () {
   }))
 
   this.on('logout', req => {
+    authCache.removeByUserId(req.user.id)
     authCache.remove(req.headers.authorization)
     return { success: true }
   })
@@ -330,6 +339,7 @@ module.exports = cds.service.impl(function () {
         .set({ passwordHash: hashPassword(newPassword), failedLoginAttempts: 0, lockedUntil: null })
         .where({ ID: row.ID })
     )
+    authCache.removeByUserId(req.user.id)
     return { success: true }
   })
 })

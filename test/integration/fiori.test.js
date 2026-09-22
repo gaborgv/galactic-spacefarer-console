@@ -14,6 +14,8 @@ describe('Fiori metadata annotations', () => {
     expect(selectionFields).to.include('<PropertyPath>spacesuitColor_code</PropertyPath>')
     expect(selectionFields).not.to.include('<PropertyPath>name</PropertyPath>')
     expect(selectionFields).not.to.include('<PropertyPath>email</PropertyPath>')
+    expect(edmx).to.include('Term="Common.ValueListWithFixedValues"')
+    expect(edmx).to.include('CollectionPath" String="SpacesuitColorOptions"')
     expect(edmx).to.include('PropertyValue Property="Value" Path="spacesuitColorName"')
     expect(edmx).to.include('EntitySet Name="SpacesuitColorOptions"')
     expect(edmx).to.include('EntitySet Name="NavigationSkillChoices"')

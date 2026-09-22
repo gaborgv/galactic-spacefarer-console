@@ -128,22 +128,6 @@ sap.ui.define([
     return ownership
   }
 
-  function navigateToList() {
-    const routing = getExtensionAPI()?.routing ?? pageExtension?.base?.getExtensionAPI?.()?.routing
-    if (routing?.navigateToRoute) {
-      routing.navigateToRoute('SpacefarersList', {})
-      return
-    }
-
-    const component = sap.ui.core.Component.getComponentById('galactic.spacefarers')
-    if (component?.getRouter?.()?.navTo) {
-      component.getRouter().navTo('SpacefarersList')
-      return
-    }
-
-    window.location.replace(window.location.pathname + window.location.search)
-  }
-
   async function forceRelogin() {
     try {
       await fetch(`${SERVICE}/logout()`, { credentials: 'include' })
@@ -185,6 +169,42 @@ sap.ui.define([
     if (ctx?.getBinding?.()?.refresh) {
       ctx.getBinding().refresh()
     }
+  }
+
+  async function refreshListReport() {
+    const app = sap.ui.core.Component.getComponentById('galactic.spacefarers')
+    const model = app?.getModel?.() ?? pageExtension?.base?.getView?.()?.getModel?.()
+    if (typeof model?.refresh === 'function') {
+      model.refresh()
+    }
+
+    const listComponent = sap.ui.core.Component.getComponentById('SpacefarersList')
+    const listApi = listComponent?.getExtensionAPI?.()
+    if (typeof listApi?.refresh === 'function') {
+      await listApi.refresh()
+    }
+  }
+
+  async function navigateToList() {
+    try {
+      await refreshListReport()
+    } catch {
+      // still navigate even if the list refresh fails
+    }
+
+    const routing = getExtensionAPI()?.routing ?? pageExtension?.base?.getExtensionAPI?.()?.routing
+    if (routing?.navigateToRoute) {
+      routing.navigateToRoute('SpacefarersList', {})
+      return
+    }
+
+    const component = sap.ui.core.Component.getComponentById('galactic.spacefarers')
+    if (component?.getRouter?.()?.navTo) {
+      component.getRouter().navTo('SpacefarersList')
+      return
+    }
+
+    window.location.replace(window.location.pathname + window.location.search)
   }
 
   async function invokeAction(actionName, params) {
@@ -279,6 +299,7 @@ sap.ui.define([
         editDialog.close()
         MessageToast.show('Profile updated')
         await refreshContext(editDialog.data('pageContext'))
+        await refreshListReport()
       } catch (err) {
         MessageBox.error(err.message ?? 'Profile update failed')
       }
