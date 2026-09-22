@@ -33,6 +33,9 @@
         "sap.ui.controllerExtensions": {
           "sap.fe.templates.ListReport.view.ListReport": {
             "controllerName": "galactic.spacefarers.ext.ListReportExt"
+          },
+          "sap.fe.templates.ObjectPage.view.ObjectPage": {
+            "controllerName": "galactic.spacefarers.ext.ObjectPageExt"
           }
         }
       }
@@ -43,6 +46,8 @@
       "minUI5Version": "1.120.0",
       "libs": {
         "sap.ui.core": {},
+        "sap.m": {},
+        "sap.ui.layout": {},
         "sap.fe.templates": {}
       }
     },
@@ -85,14 +90,6 @@
               "contextPath": "/Spacefarers",
               "initialLoad": "Enabled",
               "variantManagement": "None",
-              "share": {
-                "showSendEmail": false,
-                "showSaveAsTile": false,
-                "showShareInWorkzone": false,
-                "teams": {
-                  "showMsTeamsOptions": false
-                }
-              },
               "navigation": {
                 "Spacefarers": {
                   "detail": {
@@ -160,7 +157,34 @@
           "options": {
             "settings": {
               "contextPath": "/Spacefarers",
-              "editableHeaderContent": false
+              "variantManagement": "None",
+              "editableHeaderContent": false,
+              "content": {
+                "header": {
+                  "actions": {
+                    "BackToList": {
+                      "press": "galactic.spacefarers.ext.ObjectPageActions.backToList",
+                      "text": "Back to List",
+                      "visible": true
+                    },
+                    "EditProfile": {
+                      "press": "galactic.spacefarers.ext.ObjectPageActions.editProfile",
+                      "text": "Edit Profile",
+                      "visible": true
+                    },
+                    "ChangePassword": {
+                      "press": "galactic.spacefarers.ext.ObjectPageActions.changePassword",
+                      "text": "Change Password",
+                      "visible": true
+                    },
+                    "LeaveAdventure": {
+                      "press": "galactic.spacefarers.ext.ObjectPageActions.leaveAdventure",
+                      "text": "Delete Spacefarer Profile",
+                      "visible": true
+                    }
+                  }
+                }
+              }
             }
           }
         }

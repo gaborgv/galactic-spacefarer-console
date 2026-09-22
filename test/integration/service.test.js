@@ -101,12 +101,68 @@ describe('GalacticService', () => {
     expect(data.value).to.have.length(0)
   })
 
-  it('allows a spacefarer to update their own profile', async () => {
+  it('returns whoAmI for authenticated spacefarers', async () => {
+    const { status, data } = await GET(`${SVC}/whoAmI()`, auth('picard@planet-x.gal', 'X'))
+    expect(status).to.equal(200)
+    expect(data.email).to.equal('picard@planet-x.gal')
+    expect(data.planet).to.equal('X')
+  })
+
+  it('rejects unauthenticated whoAmI', async () => {
+    try {
+      await axios.get(`${SVC}/whoAmI()`)
+      expect.fail('expected 401')
+    } catch (err) {
+      expect(err.response.status).to.equal(401)
+    }
+  })
+
+  it('accepts logout for authenticated spacefarers', async () => {
+    const { status, data } = await GET(`${SVC}/logout()`, auth('picard@planet-x.gal', 'X'))
+    expect(status).to.equal(200)
+    expect(data.success).to.equal(true)
+  })
+
+  it('enriches display labels on spacefarer read', async () => {
+    const { data } = await GET(`${SVC}/Spacefarers(${PICARD})`, auth('picard@planet-x.gal', 'X'))
+    expect(data.spacesuitColorName).to.equal('Silver')
+    expect(data.departmentName).to.equal('Orbital Engineering')
+    expect(data.navigationSkillLabel).to.equal('Farseer')
+    expect(data.originPlanetName).to.equal('Planet X')
+  })
+
+  it('allows a spacefarer to update their own full profile', async () => {
     const { status, data } = await PATCH(`${SVC}/Spacefarers(${PICARD})`, {
       stardustCollection: 125,
+      name: 'Jean-Luc Picard',
+      spacesuitColor_code: 'SILVER',
+      navigationSkill_level: 6,
+      department_ID: ENG_DEPT_X,
+      position_ID: ENG_PROPULSION,
     }, auth('picard@planet-x.gal', 'X'))
     expect(status).to.equal(200)
     expect(data.stardustCollection).to.equal(125)
+    expect(data.spacesuitColor_code).to.equal('SILVER')
+    expect(data.navigationSkill_level).to.equal(6)
+    expect(data.department_ID).to.equal(ENG_DEPT_X)
+  })
+
+  it('allows a spacefarer to update only stardust and spacesuit color', async () => {
+    const { status, data } = await PATCH(`${SVC}/Spacefarers(${PICARD})`, {
+      stardustCollection: 130,
+      spacesuitColor_code: 'GOLD',
+    }, auth('picard@planet-x.gal', 'X'))
+    expect(status).to.equal(200)
+    expect(data.stardustCollection).to.equal(130)
+    expect(data.spacesuitColor_code).to.equal('GOLD')
+    expect(data.name).to.equal('Jean-Luc Picard')
+
+    const restored = await PATCH(`${SVC}/Spacefarers(${PICARD})`, {
+      stardustCollection: 125,
+      spacesuitColor_code: 'SILVER',
+    }, auth('picard@planet-x.gal', 'X'))
+    expect(restored.status).to.equal(200)
+    expect(restored.data.spacesuitColor_code).to.equal('SILVER')
   })
 
   it('rejects incoherent department/position pair on UPDATE', async () => {

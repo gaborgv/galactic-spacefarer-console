@@ -4,6 +4,7 @@ const { hashPassword, verifyPassword } = require('./lib/password')
 const { validateSpacefarerUpdate } = require('./lib/validators')
 const { validateAndPrepareNewSpacefarer, verifyOnboardingPersisted } = require('./lib/onboarding')
 const { sendWelcomeEmail } = require('./lib/mail')
+const authCache = require('./lib/auth-cache')
 
 const SECRET_FIELDS = ['password', 'passwordHash', 'failedLoginAttempts', 'lockedUntil']
 const LOG = cds.log('onboarding')
@@ -35,6 +36,17 @@ async function createSpacefarerViaService(srv, Spacefarers, entry, tx) {
 }
 
 const DB_COLOR_TEXTS = 'galactic.SpacesuitColorTexts'
+const DB_DEPT_TEXTS = 'galactic.DepartmentTexts'
+const DB_POSITION_TEXTS = 'galactic.PositionTexts'
+const DB_SKILL_TEXTS = 'galactic.NavigationSkillLevelTexts'
+const DB_PLANETS = 'galactic.Planets'
+const VIRTUAL_DISPLAY_FIELDS = [
+  'spacesuitColorName',
+  'departmentName',
+  'positionName',
+  'navigationSkillLabel',
+  'originPlanetName',
+]
 const SUPPORTED_LOCALES = new Set(['en', 'de'])
 
 function localeFromRequest(req) {
@@ -50,26 +62,60 @@ function columnName(col) {
   return null
 }
 
-async function enrichSpacesuitColorNames(rows, locale) {
-  if (!rows.length) return
-  const codes = [...new Set(rows.map(r => r.spacesuitColor_code ?? r.spacesuitColor?.code).filter(Boolean))]
-  if (!codes.length) return
+function localizedText(map, key, locale, fallback) {
+  const entry = map.get(key)
+  return entry?.[locale] ?? entry?.en ?? fallback
+}
 
+async function loadLocalizedMap(table, keyCol, valueCol, keys) {
+  if (!keys.length) return new Map()
   const texts = await cds.run(
-    SELECT.from(DB_COLOR_TEXTS).columns('color_code', 'locale', 'name').where({ color_code: codes })
+    SELECT.from(table).columns(keyCol, 'locale', valueCol).where({ [keyCol]: keys })
   )
-  const byCode = new Map()
+  const map = new Map()
   for (const t of texts) {
-    const code = t.color_code
-    const entry = byCode.get(code) ?? {}
-    entry[t.locale] = t.name
-    byCode.set(code, entry)
+    const key = t[keyCol]
+    const entry = map.get(key) ?? {}
+    entry[t.locale] = t[valueCol]
+    map.set(key, entry)
   }
+  return map
+}
+
+async function enrichDisplayTexts(rows, locale) {
+  if (!rows.length) return
+
+  const colorCodes = [...new Set(rows.map(r => r.spacesuitColor_code ?? r.spacesuitColor?.code).filter(Boolean))]
+  const deptIds = [...new Set(rows.map(r => r.department_ID ?? r.department?.ID).filter(Boolean))]
+  const positionIds = [...new Set(rows.map(r => r.position_ID ?? r.position?.ID).filter(Boolean))]
+  const skillLevels = [...new Set(rows.map(r => r.navigationSkill_level ?? r.navigationSkill?.level).filter(Boolean))]
+  const planetCodes = [...new Set(rows.map(r => r.originPlanet_code ?? r.originPlanet?.code).filter(Boolean))]
+
+  const [colorMap, deptMap, positionMap, skillMap, planets] = await Promise.all([
+    loadLocalizedMap(DB_COLOR_TEXTS, 'color_code', 'name', colorCodes),
+    loadLocalizedMap(DB_DEPT_TEXTS, 'department_ID', 'name', deptIds),
+    loadLocalizedMap(DB_POSITION_TEXTS, 'position_ID', 'title', positionIds),
+    loadLocalizedMap(DB_SKILL_TEXTS, 'skillLevel_level', 'label', skillLevels),
+    planetCodes.length
+      ? cds.run(SELECT.from(DB_PLANETS).columns('code', 'name').where({ code: planetCodes }))
+      : [],
+  ])
+
+  const planetMap = new Map(planets.map(p => [p.code, p.name]))
 
   for (const row of rows) {
-    const code = row.spacesuitColor_code ?? row.spacesuitColor?.code
-    const names = byCode.get(code)
-    row.spacesuitColorName = names?.[locale] ?? names?.en ?? code
+    const colorCode = row.spacesuitColor_code ?? row.spacesuitColor?.code
+    row.spacesuitColorName = localizedText(colorMap, colorCode, locale, colorCode)
+    row.departmentName = localizedText(deptMap, row.department_ID ?? row.department?.ID, locale, row.department_ID)
+    row.positionName = localizedText(positionMap, row.position_ID ?? row.position?.ID, locale, row.position_ID)
+    row.navigationSkillLabel = localizedText(
+      skillMap,
+      row.navigationSkill_level ?? row.navigationSkill?.level,
+      locale,
+      String(row.navigationSkill_level ?? '')
+    )
+    const planetCode = row.originPlanet_code ?? row.originPlanet?.code
+    row.originPlanetName = planetMap.get(planetCode) ?? planetCode
   }
 }
 
@@ -88,15 +134,24 @@ function rejectSecretSelect(req) {
 function stripVirtualSelect(req) {
   const cols = req.query?.SELECT?.columns
   if (!cols) return
-  const filtered = cols.filter(c => columnName(c) !== 'spacesuitColorName')
+  const filtered = cols.filter(c => !VIRTUAL_DISPLAY_FIELDS.includes(columnName(c)))
   if (filtered.length !== cols.length) {
     req.query.SELECT.columns = filtered.length ? filtered : undefined
-    req._enrichSpacesuitColorName = true
+    req._enrichDisplayTexts = true
   }
 }
 
+function filterOptionsByLocale(req) {
+  req.query.where({ locale: localeFromRequest(req) })
+}
+
 module.exports = cds.service.impl(function () {
-  const { Spacefarers, SpacefarersAll, SpacesuitColorOptions } = this.entities
+  const {
+    Spacefarers,
+    SpacefarersAll,
+    SpacesuitColorOptions,
+    NavigationSkillChoices,
+  } = this.entities
 
   this.before('READ', Spacefarers, req => {
     rejectSecretSelect(req)
@@ -104,15 +159,14 @@ module.exports = cds.service.impl(function () {
   })
   this.before('READ', SpacefarersAll, rejectSecretSelect)
 
-  this.before('READ', SpacesuitColorOptions, req => {
-    req.query.where({ locale: localeFromRequest(req) })
-  })
+  this.before('READ', SpacesuitColorOptions, filterOptionsByLocale)
+  this.before('READ', NavigationSkillChoices, filterOptionsByLocale)
 
   this.after('READ', Spacefarers, async (results, req) => {
     const rows = Array.isArray(results) ? results : results ? [results] : []
     rows.forEach(stripSecrets)
-    if (req._enrichSpacesuitColorName || rows.some(r => r.spacesuitColor_code || r.spacesuitColor?.code)) {
-      await enrichSpacesuitColorNames(rows, localeFromRequest(req))
+    if (req._enrichDisplayTexts || rows.length) {
+      await enrichDisplayTexts(rows, localeFromRequest(req))
     }
   })
 
@@ -227,6 +281,16 @@ module.exports = cds.service.impl(function () {
         })
         .where({ ID: row.ID })
     )
+    return { success: true }
+  })
+
+  this.on('whoAmI', req => ({
+    email: req.user.id,
+    planet: req.user.attr?.planet ?? req.user.planet,
+  }))
+
+  this.on('logout', req => {
+    authCache.remove(req.headers.authorization)
     return { success: true }
   })
 
