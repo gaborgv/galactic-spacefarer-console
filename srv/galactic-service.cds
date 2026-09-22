@@ -27,6 +27,10 @@ service GalacticService {
   @(requires: 'any')
   entity SpacesuitColorTexts as projection on db.SpacesuitColorTexts { * };
 
+  @readonly
+  @(requires: 'any')
+  entity NavigationSkillLevelTexts as projection on db.NavigationSkillLevelTexts { * };
+
   /** Localized code/name pairs for value help and display text (locale filtered at runtime). */
   @readonly
   @(requires: 'any')
@@ -34,6 +38,21 @@ service GalacticService {
     key t.color.code as code,
     t.locale,
     t.name
+  };
+
+  @readonly
+  @(requires: 'any')
+  entity NavigationSkillChoices as select from NavigationSkillLevelTexts as t {
+    key t.skillLevel.level as level,
+    t.locale,
+    t.label as name
+  };
+
+  /** Current authenticated spacefarer identity for UI edit gating. */
+  @(requires: 'authenticated-user')
+  function whoAmI() returns {
+    email  : String;
+    planet : String;
   };
 
   @cds.redirection.target
@@ -78,5 +97,9 @@ service GalacticService {
 }
 
 extend GalacticService.Spacefarers with columns {
-  virtual null as spacesuitColorName : String
+  virtual null as spacesuitColorName   : String,
+  virtual null as departmentName       : String,
+  virtual null as positionName         : String,
+  virtual null as navigationSkillLabel : String,
+  virtual null as originPlanetName     : String
 }

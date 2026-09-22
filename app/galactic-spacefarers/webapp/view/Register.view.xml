@@ -1,0 +1,71 @@
+<mvc:View
+  controllerName="galactic.spacefarers.controller.Register"
+  xmlns="sap.m"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns:f="sap.ui.layout.form"
+  xmlns:core="sap.ui.core">
+  <Page title="Join the Galactic Adventure" showNavButton="false">
+    <customHeader>
+      <Bar>
+        <contentMiddle>
+          <Title text="Join the Galactic Adventure" />
+        </contentMiddle>
+        <contentRight>
+          <Button text="Sign In" type="Transparent" press=".onSignInPress" />
+        </contentRight>
+      </Bar>
+    </customHeader>
+    <content>
+      <VBox class="sapUiSmallMargin">
+        <Text text="Register as a new spacefarer. No login required." class="sapUiTinyMarginBottom" />
+        <f:SimpleForm editable="true" layout="ResponsiveGridLayout" width="100%">
+          <Label text="Name" required="true" />
+          <Input value="{register>/name}" />
+
+          <Label text="Email" required="true" />
+          <Input value="{register>/email}" type="Email" />
+
+          <Label text="Password" required="true" />
+          <Input value="{register>/password}" type="Password" description="Demo: use your planet code (X or Y)" />
+
+          <Label text="Origin Planet" required="true" />
+          <Select
+            selectedKey="{register>/originPlanet_code}"
+            items="{register>/planets}"
+            change=".onPlanetChange">
+            <core:Item key="{register>code}" text="{register>name}" />
+          </Select>
+
+          <Label text="Department" required="true" />
+          <Select
+            selectedKey="{register>/department_ID}"
+            items="{register>/departments}"
+            change=".onDepartmentChange">
+            <core:Item key="{register>ID}" text="{register>code}" />
+          </Select>
+
+          <Label text="Position" required="true" />
+          <Select selectedKey="{register>/position_ID}" items="{register>/positions}">
+            <core:Item key="{register>ID}" text="{register>code}" />
+          </Select>
+
+          <Label text="Navigation Skill" required="true" />
+          <Select selectedKey="{register>/navigationSkill_level}" items="{register>/skills}">
+            <core:Item key="{register>level}" text="{register>name}" />
+          </Select>
+
+          <Label text="Spacesuit Color" required="true" />
+          <Select selectedKey="{register>/spacesuitColor_code}" items="{register>/colors}">
+            <core:Item key="{register>code}" text="{register>name}" />
+          </Select>
+
+          <Label text="Stardust Collection" />
+          <Input value="{register>/stardustCollection}" type="Number" />
+        </f:SimpleForm>
+        <HBox class="sapUiSmallMarginTop">
+          <Button text="Register" type="Emphasized" press=".onRegisterPress" />
+        </HBox>
+      </VBox>
+    </content>
+  </Page>
+</mvc:View>

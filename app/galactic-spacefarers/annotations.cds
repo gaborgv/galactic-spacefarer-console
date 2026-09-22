@@ -3,6 +3,7 @@ using GalacticService as service from '../../srv/galactic-service';
 annotate service.Spacefarers with @(
   title: '{i18n>SpacefarersListTitle}',
   cds.search: name,
+  Capabilities.DeleteRestrictions: { Deletable: false },
   UI: {
     CommunicationHidden: true,
     SelectionFields: [stardustCollection, spacesuitColor_code],
@@ -17,6 +18,39 @@ annotate service.Spacefarers with @(
       Title: {Value: name},
       Description: {Value: email},
     },
+    Identification: [
+      {Value: stardustCollection, Label: '{i18n>StardustCollection}'},
+      {Value: spacesuitColorName, Label: '{i18n>SpacesuitColor}'},
+      {Value: navigationSkillLabel, Label: '{i18n>NavigationSkill}'},
+    ],
+    Facets: [
+      {
+        $Type: 'UI.ReferenceFacet',
+        Label: '{i18n>CosmicDetails}',
+        Target: '@UI.FieldGroup#Details',
+      },
+      {
+        $Type: 'UI.ReferenceFacet',
+        Label: '{i18n>Assignment}',
+        Target: '@UI.FieldGroup#Assignment',
+      },
+    ],
+    FieldGroup #Details: {
+      Data: [
+        {Value: name, Label: '{i18n>Name}'},
+        {Value: email, Label: '{i18n>Email}'},
+        {Value: originPlanetName, Label: '{i18n>OriginPlanet}'},
+        {Value: stardustCollection, Label: '{i18n>StardustCollection}'},
+        {Value: spacesuitColorName, Label: '{i18n>SpacesuitColor}'},
+        {Value: navigationSkillLabel, Label: '{i18n>NavigationSkill}'},
+      ],
+    },
+    FieldGroup #Assignment: {
+      Data: [
+        {Value: departmentName, Label: '{i18n>Department}'},
+        {Value: positionName, Label: '{i18n>Position}'},
+      ],
+    },
     PresentationVariant: {
       Text: '{i18n>SpacefarersListTitle}',
       Visualizations: ['@UI.LineItem'],
@@ -25,30 +59,33 @@ annotate service.Spacefarers with @(
 );
 
 annotate service.Spacefarers with {
-  passwordHash        @UI.Hidden;
-  failedLoginAttempts @UI.Hidden;
-  lockedUntil         @UI.Hidden;
-  name                @UI.HiddenFilter;
-  email               @UI.HiddenFilter;
-  spacesuitColorName  @UI.HiddenFilter;
-  ID                  @UI.HiddenFilter;
-  isDeleted           @UI.HiddenFilter;
-  createdAt           @UI.HiddenFilter;
-  createdBy           @UI.HiddenFilter;
-  modifiedAt          @UI.HiddenFilter;
-  modifiedBy           @UI.HiddenFilter;
-  originPlanet_code   @UI.HiddenFilter;
-  navigationSkill_level @UI.HiddenFilter;
-  department_ID       @UI.HiddenFilter;
-  position_ID         @UI.HiddenFilter;
+  passwordHash           @UI.Hidden;
+  failedLoginAttempts    @UI.Hidden;
+  lockedUntil            @UI.Hidden;
+  isDeleted              @UI.Hidden;
+  name                   @UI.HiddenFilter;
+  email                  @UI.HiddenFilter;
+  spacesuitColorName     @UI.HiddenFilter;
+  departmentName         @UI.HiddenFilter;
+  positionName           @UI.HiddenFilter;
+  navigationSkillLabel   @UI.HiddenFilter;
+  originPlanetName       @UI.HiddenFilter;
+  ID                     @UI.HiddenFilter;
+  createdAt              @UI.HiddenFilter;
+  createdBy              @UI.HiddenFilter;
+  modifiedAt             @UI.HiddenFilter;
+  modifiedBy             @UI.HiddenFilter;
+  originPlanet_code      @UI.HiddenFilter;
+  navigationSkill_level  @UI.HiddenFilter;
+  department_ID          @UI.HiddenFilter;
+  position_ID            @UI.HiddenFilter;
+  spacesuitColor_code    @UI.HiddenFilter;
 };
 
 annotate service.Spacefarers with {
   spacesuitColor_code @(
     title: '{i18n>SpacesuitColor}',
-    Common.Label: '{i18n>SpacesuitColor}',
     Common: {
-      TextArrangement: #TextOnly,
       ValueListWithFixedValues: true,
       ValueList: {
         CollectionPath: 'SpacesuitColorOptions',
@@ -72,9 +109,15 @@ annotate service.Spacefarers with {
   );
   name               @title: '{i18n>Spacefarer}';
   email              @title: '{i18n>Email}';
+  originPlanetName   @title: '{i18n>OriginPlanet}';
 };
 
 annotate service.SpacesuitColorOptions with @(
   title: '{i18n>SpacesuitColor}',
+  UI.Identification: [{Value: name}],
+);
+
+annotate service.NavigationSkillChoices with @(
+  title: '{i18n>NavigationSkill}',
   UI.Identification: [{Value: name}],
 );
